@@ -5596,17 +5596,59 @@ function _sbHeaders(key, extra) {
 // ── Supabase encrypted cloud sync — throttled ~30s; records sync health ──────
 let _sbPushTimer = null;
 let _sbPending = null; // last scheduled-but-not-yet-sent cloud payload, so hide/lock can flush it
+function _sbDecryptPayload(payload, allowPrompt) {
+  return (async () => {
+    if (allowPrompt === undefined) allowPrompt = true;
+    if (!(payload && payload.enc === 1 && payload.d)) {
+      if (payload && typeof payload === 'object') return JSON.stringify(payload); // legacy unencrypted
+      throw new Error('Unrecognised backup format.');
+    }
+    const localKey = _getCurrentKey();
+    if (localKey) { try { return await _decryptString(payload.d, localKey); } catch(e){} }
+    if (!payload.salt) throw new Error('This backup is missing its salt - re-save it on the device that created it (after updating), then try again.');
+    const sess = (typeof _loadSession === 'function') ? _loadSession() : null;
+    if (sess) { try { return await _decryptString(payload.d, await _deriveKey(sess, _b64dec(payload.salt))); } catch(e){} }
+    if (!allowPrompt) throw new Error('Could not decrypt automatically.');
+    const pw = window.prompt('Enter the master password used on the device that created this backup:');
+    if (!pw) throw new Error('Restore cancelled.');
+    try { return await _decryptString(payload.d, await _deriveKey(pw, _b64dec(payload.salt))); }
+    catch(e){ throw new Error('Could not decrypt - that password does not match this backup.'); }
+  })();
+}
+
+function _sbMaybeVersion(url, key, payloadObj) {
+  try {
+    const last = parseInt(localStorage.getItem('ot-sb-last-version') || '0', 10);
+    if (Date.now() - last < 3600000) return; // at most one version snapshot per hour
+    localStorage.setItem('ot-sb-last-version', String(Date.now()));
+    fetch(`${url}/rest/v1/ot_data_versions`, {
+      method:'POST',
+      headers:_sbHeaders(key, { 'Content-Type':'application/json' }),
+      body: JSON.stringify({ payload: payloadObj }),
+    }).then(r => {
+      if (!r.ok) return; // versions table may not exist yet - degrade silently
+      fetch(`${url}/rest/v1/ot_data_versions?select=id&order=created_at.desc&offset=50`, { headers:_sbHeaders(key) })
+        .then(rr => rr.ok ? rr.json() : []).then(old => {
+          if (Array.isArray(old) && old.length) {
+            fetch(`${url}/rest/v1/ot_data_versions?id=in.(${old.map(o=>o.id).join(',')})`, { method:'DELETE', headers:_sbHeaders(key) }).catch(()=>{});
+          }
+        }).catch(()=>{});
+    }).catch(()=>{});
+  } catch(e){}
+}
+
 function _sbDoPush(plain, cryptoKey, url, key) {
-  return _encryptString(plain, cryptoKey).then(envelope =>
-    fetch(`${url}/rest/v1/ot_data`, {
+  return _encryptString(plain, cryptoKey).then(envelope => {
+    const _payload = { enc:1, salt:(_readMeta()||{}).salt, d:envelope };
+    return fetch(`${url}/rest/v1/ot_data`, {
       method: 'POST',
       headers: _sbHeaders(key, { 'Content-Type':'application/json', Prefer:'resolution=merge-duplicates' }),
-      body: JSON.stringify({ id:'main', payload:{ enc:1, d:envelope }, updated_at:new Date().toISOString() }),
+      body: JSON.stringify({ id:'main', payload:_payload, updated_at:new Date().toISOString() }),
     }).then(r => {
-      if (r.ok) { localStorage.setItem('ot-sb-last-sync', new Date().toISOString()); localStorage.setItem('ot-sb-fail','0'); }
+      if (r.ok) { localStorage.setItem('ot-sb-last-sync', new Date().toISOString()); localStorage.setItem('ot-sb-fail','0'); _sbMaybeVersion(url, key, _payload); }
       else { localStorage.setItem('ot-sb-fail', String((parseInt(localStorage.getItem('ot-sb-fail')||'0',10))+1)); console.warn('[Supabase] sync HTTP', r.status); }
-    }).catch(e => { localStorage.setItem('ot-sb-fail', String((parseInt(localStorage.getItem('ot-sb-fail')||'0',10))+1)); console.warn('[Supabase] sync failed:', e); })
-  ).catch(e => console.warn('[Supabase] encrypt failed:', e));
+    }).catch(e => { localStorage.setItem('ot-sb-fail', String((parseInt(localStorage.getItem('ot-sb-fail')||'0',10))+1)); console.warn('[Supabase] sync failed:', e); });
+  }).catch(e => console.warn('[Supabase] encrypt failed:', e));
 }
 function scheduleSupabasePush(plain, cryptoKey, url, key) {
   if (!url || !key || !cryptoKey) return;
@@ -20184,6 +20226,8 @@ function ProfileSettingsModal({ data, updateData, addToast, onClose, onLock, ini
   const [sbKey, setSbKey] = useState(s.supabaseKey || '');
   const [sbSyncing, setSbSyncing] = useState(false);
   const [sbStatus, setSbStatus] = useState(null);
+  const [sbVersions, setSbVersions] = useState(null);
+  const [sbVerBusy, setSbVerBusy] = useState(false);
 
   const testAndSaveSupabase = async () => {
     const _u = (sbUrl||'').trim().replace(/\/+$/,''); const _k = (sbKey||'').trim();
@@ -20207,6 +20251,32 @@ function ProfileSettingsModal({ data, updateData, addToast, onClose, onLock, ini
     addToast('Supabase disconnected');
   };
 
+  const loadVersions = async () => {
+    const _u = (s.supabaseUrl||'').replace(/\/+$/,''); const _k = s.supabaseKey;
+    if (!_u || !_k) return;
+    setSbVerBusy(true);
+    try {
+      const r = await fetch(`${_u}/rest/v1/ot_data_versions?select=id,created_at&order=created_at.desc&limit=50`, { headers:_sbHeaders(_k) });
+      if (!r.ok) { setSbVersions([]); setSbStatus({ ok:false, msg: (r.status===404||r.status===401) ? 'Version history not set up yet - run the versions SQL in Supabase.' : ('Could not load versions: '+r.status) }); }
+      else { setSbVersions(await r.json()); }
+    } catch(e){ setSbVersions([]); setSbStatus({ ok:false, msg:'Could not load versions: '+e.message }); }
+    setSbVerBusy(false);
+  };
+  const restoreVersion = async (id) => {
+    const _u = (s.supabaseUrl||'').replace(/\/+$/,''); const _k = s.supabaseKey;
+    if (!window.confirm('Restore this earlier version? It replaces what is currently on screen (your current data stays in the cloud history too).')) return;
+    setSbVerBusy(true);
+    try {
+      const r = await fetch(`${_u}/rest/v1/ot_data_versions?id=eq.${id}&select=payload`, { headers:_sbHeaders(_k) });
+      const rows = r.ok ? await r.json() : [];
+      if (!rows.length || !rows[0].payload) { setSbStatus({ ok:false, msg:'That version could not be read.' }); setSbVerBusy(false); return; }
+      const plain = await _sbDecryptPayload(rows[0].payload, true);
+      updateData(() => migrateData(mergeWithDefaults(JSON.parse(plain))));
+      setSbStatus({ ok:true, msg:'\u2713 Restored that earlier version.' });
+      addToast('Restored earlier version');
+    } catch(e){ setSbStatus({ ok:false, msg:'Restore failed: '+e.message }); }
+    setSbVerBusy(false);
+  };
   const pullFromSupabase = async () => {
     if (!s.supabaseUrl || !s.supabaseKey) return;
     if (!window.confirm('This will replace your current data with the cloud backup. Are you sure?')) return;
@@ -20223,16 +20293,8 @@ function ProfileSettingsModal({ data, updateData, addToast, onClose, onLock, ini
       }
       const payload = rows[0].payload;
       let plain;
-      if (payload.enc === 1 && payload.d) {
-        const cryptoKey = _getCurrentKey();
-        if (!cryptoKey) { setSbStatus({ ok:false, msg:'Please unlock the dashboard before restoring.' }); return; }
-        plain = await _decryptString(payload.d, cryptoKey);
-      } else if (typeof payload === 'object') {
-        // Legacy unencrypted backup
-        plain = JSON.stringify(payload);
-      } else {
-        setSbStatus({ ok:false, msg:'Unrecognised backup format.' }); return;
-      }
+      try { plain = await _sbDecryptPayload(payload, true); }
+      catch (e) { setSbStatus({ ok:false, msg: e.message || 'Could not decrypt the backup.' }); return; }
       const restored = JSON.parse(plain);
       // Route the restored blob through the same backfill + migration path as loadData,
       // so an older-schema cloud backup is brought up to the current structure on restore.
@@ -20586,6 +20648,22 @@ function ProfileSettingsModal({ data, updateData, addToast, onClose, onLock, ini
               <Btn variant='ghost' onClick={pullFromSupabase} disabled={sbSyncing}>
                 {sbSyncing ? 'Restoring…' : '⬇ Restore from cloud backup'}
               </Btn>
+              <Btn variant='ghost' onClick={()=>{ if (sbVersions===null) loadVersions(); else setSbVersions(null); }} disabled={sbVerBusy}>
+                {sbVerBusy ? 'Loading\u2026' : (sbVersions===null ? '\u23F1 Earlier versions\u2026' : 'Hide versions')}
+              </Btn>
+              {sbVersions && sbVersions.length>0 && (
+                <div style={{ border:`1px solid ${T.sandBorder}`, borderRadius:8, maxHeight:220, overflowY:'auto' }}>
+                  {sbVersions.map(v => (
+                    <div key={v.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 12px', borderBottom:`1px solid ${T.sand}`, fontSize:12 }}>
+                      <span style={{ color:T.inkMid }}>{new Date(v.created_at).toLocaleString('en-GB',{ day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}</span>
+                      <button onClick={()=>restoreVersion(v.id)} disabled={sbVerBusy} style={{ background:'none', border:`1px solid ${T.sage}`, color:T.sage, borderRadius:6, padding:'3px 10px', fontSize:11, fontWeight:600, cursor:'pointer' }}>Restore</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {sbVersions && sbVersions.length===0 && (
+                <div style={{ fontSize:11, color:T.inkLight, fontStyle:'italic' }}>No earlier versions yet (they build up over time, max one per hour).</div>
+              )}
             </div>
           )}
           {!s.supabaseUrl && (
@@ -23126,13 +23204,13 @@ function App() {
             if (!rows.length || !rows[0].updated_at) return;
             const cloudT = new Date(rows[0].updated_at).getTime();
             if (cloudT <= localT + 60000) return; // not meaningfully newer than our own last push
-            if (!window.confirm('A newer backup was found in the cloud (saved ' + new Date(rows[0].updated_at).toLocaleString('en-GB') + ') — likely from another device.\n\nRestore it now? This replaces what is currently on screen.\n\nCancel = keep what is on screen (it will overwrite the cloud on your next change).')) return;
+            // auto-restore: pull the newer cloud copy silently (no prompt)
             fetch(`${su}/rest/v1/ot_data?id=eq.main&select=payload`, { headers: _sbHeaders(sk) })
               .then(r => r.ok ? r.json() : [])
               .then(async prows => {
-                const payload = prows[0] && prows[0].payload; const ck = _getCurrentKey();
-                if (!payload || payload.enc !== 1 || !payload.d || !ck) { addToast('Could not read the cloud backup', 'error'); return; }
-                const plain = await _decryptString(payload.d, ck);
+                const payload = prows[0] && prows[0].payload;
+                if (!payload) return;
+                const plain = await _sbDecryptPayload(payload, false);
                 updateData(() => migrateData(mergeWithDefaults(JSON.parse(plain))));
                 localStorage.setItem('ot-sb-last-sync', rows[0].updated_at);
                 addToast('Restored the newer cloud backup');
