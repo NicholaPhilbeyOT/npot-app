@@ -5018,13 +5018,15 @@ if (!window.claude) {
   // Real bridge: uses the same locally-stored API key as Annie. Throws NO_API_KEY when unset
   // so Draft handlers show a hint instead of writing placeholder text into a clinical field.
   window.claude = {
-    complete: async (prompt) => {
+    complete: async (prompt, opts) => {
       const key = (localStorage.getItem('ot_claude_key') || '').trim();
       if (!key) throw new Error('NO_API_KEY');
+      const _model = (opts && opts.model) || 'claude-haiku-4-5-20251001';
+      const _maxTokens = (opts && opts.maxTokens) || 1024;
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method:'POST',
         headers:{ 'Content-Type':'application/json', 'x-api-key':key, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
-        body: JSON.stringify({ model:'claude-haiku-4-5-20251001', max_tokens:1024, messages:[{ role:'user', content:String(prompt||'') }] }),
+        body: JSON.stringify({ model:_model, max_tokens:_maxTokens, messages:[{ role:'user', content:String(prompt||'') }] }),
       });
       if (!res.ok) throw new Error('API_' + res.status);
       const j = await res.json();
@@ -7965,18 +7967,27 @@ function AssessmentTab({ client, data, updateClient, updateData, addToast, gotoS
     const sc = aScores || {};
     const lines = [];
     if (sc.totalMABC) lines.push(`MABC-2 Total Standard Score: ${sc.totalMABC}`);
+    ['Manual Dexterity 1','Manual Dexterity 2','Manual Dexterity 3','Aiming & Catching 1','Aiming & Catching 2','Balance 1','Balance 2','Balance 3'].forEach(k => { if (sc[k]) lines.push(`MABC-2 ${k}: ${sc[k]}`); });
     if (sc.totalBOT) lines.push(`BOT-2 Total Motor Composite: ${sc.totalBOT}`);
+    if (typeof BOT2_SCALES !== 'undefined') BOT2_SCALES.forEach(k => { if (sc[k]) lines.push(`BOT-2 ${k}: ${sc[k]}`); });
+    if (sc.vmiStandard) lines.push(`VMI standard score: ${sc.vmiStandard}`);
     if (sc.vmiScaled) lines.push(`VMI Visual-Motor Integration scaled score: ${sc.vmiScaled}`);
-    SPM2_SUBSCALES.forEach(s => { const v = aData['spm2_school_'+s.key]; if (v) lines.push(`SPM-2 ${s.label} (school): ${v}`); });
+    SPM2_SUBSCALES.forEach(s => { const v = aData['spm2_school_'+s.key]; const h = aData['spm2_home_'+s.key]; if (v||h) lines.push(`SPM-2 ${s.label}: school ${v||'-'}, home ${h||'-'}`); });
+    const _bg = [];
+    if (aReport.s1) _bg.push('Reason for referral & background: ' + aReport.s1);
+    if (aReport.s2) _bg.push('Developmental & medical history: ' + aReport.s2);
+    if (aData.bgParentFeedback) _bg.push('Parent/carer feedback: ' + aData.bgParentFeedback);
+    if (aData.bgSchoolFeedback) _bg.push('School feedback: ' + aData.bgSchoolFeedback);
+    const bgText = _bg.length ? _bg.join('\n\n') : 'Not recorded.';
     const scoresText = lines.length ? lines.join('\n') : 'No standardised scores recorded yet.';
     const guide = {
       s5: 'Synthesise the assessment scores and observations into a clinical interpretation. Identify strengths and areas of difficulty and connect them to likely functional impact. Mention DCD or sensory processing where clinically relevant.',
       s6: "Describe how the identified difficulties affect the child's daily function across school, home and self-care, with specific examples.",
       s7: 'Write a Recommendations & Goals section: recommended OT provision (frequency, setting, duration), 2–3 SMART therapeutic goals, and key strategies for school and home.',
     }[key] || `Write the "${label}" section professionally and concisely.`;
-    const prompt = `You are a UK paediatric occupational therapist writing a professional clinical report.\n\nCLIENT: ${client.name}\nAGE: ${ageExact(client.dob)?.str || ''}\nASSESSMENT TYPE: ${client.assessmentType || 'Not specified'}\nDIAGNOSIS: ${client.diagnosis || 'None recorded'}\n\nASSESSMENT SCORES:\n${scoresText}\n\nOBSERVATIONS:\n${aReport.s4 || aData.bgBehaviour || 'Not recorded.'}\n\nTASK: ${guide}\n\nWrite 2–3 paragraphs in third person, British English, formal clinical OT style. Reference specific scores where relevant. Do not use headers or bullet points.`;
+    const prompt = `You are a UK paediatric occupational therapist writing a professional clinical report.\n\nCLIENT: ${client.name}\nAGE: ${ageExact(client.dob)?.str || ''}\nASSESSMENT TYPE: ${client.assessmentType || 'Not specified'}\nDIAGNOSIS: ${client.diagnosis || 'None recorded'}\n\nBACKGROUND:\n${bgText}\n\nASSESSMENT SCORES:\n${scoresText}\n\nOBSERVATIONS:\n${aReport.s4 || aData.bgBehaviour || 'Not recorded.'}\n\nTASK: ${guide}\n\nWrite 2–3 paragraphs in third person, British English, formal clinical OT style. Reference specific scores where relevant. Do not use headers or bullet points.`;
     try {
-      const text = await window.claude.complete(prompt);
+      const text = await window.claude.complete(prompt, { model:'claude-sonnet-4-6', maxTokens:1500 });
       setAReport(d => ({ ...d, [key]: text }));
       addToast(`${label} drafted`);
     } catch (e) { addToast(e.message==='NO_API_KEY' ? 'Add your AI key in the Annie tab to use Draft' : 'AI drafting failed', 'error'); }
@@ -15811,7 +15822,7 @@ Write four separate sections. Return ONLY a JSON object with exactly these keys,
 }`;
 
     try {
-      const text = await window.claude.complete(prompt);
+      const text = await window.claude.complete(prompt, { model:'claude-sonnet-4-6', maxTokens:1400 });
       if (fieldOnly) {
         const setter = fieldSetters[fieldOnly];
         if (setter) setter(text.trim());
@@ -19720,8 +19731,11 @@ function useBackupPrefsTick() {
 function BackupStatusPill() {
   useBackupPrefsTick();
   const days = daysSinceLastExport();
+  let cloudOk = false;
+  try { const _ls = localStorage.getItem('ot-sb-last-sync'); const _f = parseInt(localStorage.getItem('ot-sb-fail')||'0',10); if (_ls && _f < 3 && (Date.now()-new Date(_ls).getTime())/60000 < 2880) cloudOk = true; } catch(e){}
   let bg, label;
-  if (days === null)                       { bg = '#B5573E'; label = 'No backup yet'; }
+  if (cloudOk)                             { bg = '#4A7C6F'; label = '\u2601 Cloud synced'; }
+  else if (days === null)                  { bg = '#B5573E'; label = 'No backup yet'; }
   else if (days < BACKUP_SOFT_NAG_DAYS)    { bg = '#4A7C6F'; label = days === 0 ? 'Backed up today' : `Backup ${days}d ago`; }
   else if (days < BACKUP_HARD_NAG_DAYS)    { bg = '#D4821A'; label = `Backup ${days}d ago`; }
   else                                     { bg = '#B5573E'; label = `Backup ${days}d old`; }
@@ -23348,7 +23362,7 @@ function App() {
             <div style={{ fontSize:11, opacity:0.75, lineHeight:1, color:'white' }}>{(data.settings && data.settings.jobTitle) || 'Occupational Therapist'}</div>
           </button>
         </div>
-        <div className="app-search" style={{ flex:1, maxWidth:380, minWidth:0, display:'flex' }}><GlobalSearch data={data} setView={setView} onNavigate={(clientId)=>{ /* future: open client directly */ }}/></div>
+        <div className="app-search" style={{ flex:1, maxWidth:380, minWidth:0, display:'flex' }}><GlobalSearch data={data} setView={setView} onNavigate={(clientId)=>{ setClientsNav({ tab:'clients', clientId }); setView('clients'); }}/></div>
         <div className="app-actions" style={S.row12}>
           <ExportImport {...props}/>
           <NotificationBell data={data} setView={setView}/>
