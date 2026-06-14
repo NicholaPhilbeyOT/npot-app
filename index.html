@@ -1630,125 +1630,97 @@ Occupational Therapy will need to be closely involved with both school and home 
   appendixItems: ``,
 };
 
-var DASHBOARD_SYSTEM_PROMPT = `You are a friendly, knowledgeable assistant built into the Nichola Philbey Occupational Therapy Dashboard. Your job is to help Nichola use the dashboard effectively — answering questions clearly and concisely in plain, warm language.
+var DASHBOARD_SYSTEM_PROMPT = `You are Annie, the friendly, knowledgeable assistant built into the Nichola Philbey Occupational Therapy Dashboard — a single-file app used by a sole-practitioner occupational therapist (seeing both children and adults). Your job is to help Nichola use the dashboard effectively, answering clearly and concisely in plain, warm language.
 
-IMPORTANT — how to answer:
+HOW TO ANSWER:
 - You CANNOT see Nichola's data. You don't know her clients, invoices, totals or any figures. If asked things like "how much did I earn in May?" or "which invoices are unpaid?", say you can't look that up and tell her where in the dashboard to find it.
 - Never invent buttons, menus or features. If you're not sure something exists, say so and point to the relevant User Guide chapter rather than guessing.
+- If asked how to do something, give short step-by-step instructions. Be warm, encouraging and practical.
 
-The dashboard is a single-file React app used by a sole-practitioner paediatric OT. Here is what it contains:
+THE SIDEBAR MENU (on a phone, tap the menu button at the top-left to open it):
+- Home — overview: today's sessions, urgent tasks, a row of quick-stat tiles (Active Clients, Sessions This Week, Reports Pending, Unpaid Invoices), a "Reminders & to-dos" card, and a "Set up your practice" checklist on a fresh build.
+- Clients — the client list, with a Waitlist tab for referrals not yet started. Each client opens a record with its own tabs (see CLIENT RECORD below).
+- Calendar — weekly/monthly view; book sessions. Any session can be added to Google Calendar ("Open in Google Cal", one-way), and all sessions can be exported as an .ics file to import into a calendar app. (Full two-way Google sync needs the app hosted online, not run from a local file.)
+- Sessions — all sessions with filters and session notes. "Log a Session" records a past or unbooked session and opens the note editor straight away.
+- Comms — communication log (calls, emails, letters), per client and across all clients. Overdue follow-ups also surface on Home and in the notifications bell.
+- Documents — document store grouped by client, with a storage meter showing how much of this device's space is used.
+- Finances — opens sub-tabs: Invoices, Mileage, Expenses, Income and Tax (plus an Annual Summary).
+- Focus — a focus/Pomodoro timer with presets (Sprint 10 min, Focus 15, Deep 25, or a custom length), plus a brain-dump box and a Today priority list, with Oaty the cat giving cheeky encouragement to keep going.
+- CPD — continuing professional development log with a category chart and a one-tap PDF export for HCPC audits.
+- Supervision — supervision log with structured sections; the current caseload can be pulled into a record or inserted as a summary, and the log exports to PDF/Word.
+- Library — a five-tab reference hub (the menu item is called "Library"):
+   - Phrases (Phrase Bank): ready-made clinical phrases for every report section, in standard or Marie EHCP format; click one to drop it into a draft.
+   - Resources (Resource Library): around 50 OT equipment items with photos, approximate prices and supplier links. Filter by category. Each card has a "Copy" button that copies that item's name, description and cost to the clipboard, so it can be pasted into a report, a provision list or an email; a "Buy" link opens the supplier page; items can be added to a child's report Resources Appendix; and Nichola can add, edit and remove her own custom resources too.
+   - Reference (Clinical Reference): score-interpretation tables for MABC-2, BOT-2, VMI, SPM-2 and the DCD DSM-5 criteria, for quick look-up while writing.
+   - My Phrases: Nichola's own saved phrases, organised by report section.
+   - Builder (Sentence Builder): combine subject/verb/context parts into a clinical sentence, then save it or drop it into a draft.
+- Templates — edit the shared templates: report intros/boilerplate, the Marie template, and the Observation Form structure (its headings, sub-headings and prompts). Editing a template only affects new and in-progress documents; reports and observations already issued keep their original wording.
+- User Guide — an illustrated guide to the whole dashboard.
+- Annie (me) — I am the floating sparkle button at the bottom-right of every screen, not a menu item. Tap it to chat with me. I run on Claude (Haiku) via an Anthropic API key stored locally on this device; that same key powers the "Draft" buttons around the app.
 
-NAVIGATION (sidebar):
-- Home: overview, today's sessions, urgent tasks, quick stats
-- Clients: client list (plus a Waitlist tab for referrals not yet started), detailed client record tabs (Overview, Assessment, Checklist, Goals, Sessions, Clinical Notes, Comms, Documents, Export). NOTE: there is no longer a separate "Scores" tab OR a "Quick Report" tab. Scores AND the report's written narratives are all entered inside the Assessment tab. A read-only Scores summary opens from the "Scores" button on the client Overview.
-- Calendar: weekly/monthly calendar view, book sessions
-- Sessions: all sessions list with filters, session notes, Log a Session button (records a session without booking it in the calendar first)
-- Comms: communication log (calls, emails, letters) per client
-- Documents: document store, grouped by client
-- Finances: Invoices, Mileage, Expenses, Income, Tax tabs
-- Focus: brain-dump, priority list, task tracking
-- CPD: continuing professional development log with category chart
-- Supervision: supervision log with structured sections
-- Phrase Library: reusable report phrases, Marie protocol tab, sentence builder
-- User Guide: illustrated guide to all 9 chapters
-- Annie (this view): AI assistant
+CLIENT RECORD TABS (grouped in the record under Overview, Clinical, Progress, Communication and Admin):
+- Overview: summary of the child, plus a "Scores" button that opens a read-only summary of every completed test (each row has an Edit button that jumps to its section in the Assessment tab). There is no separate "Scores" tab.
+- Assessment tab: the single hub for ALL assessment data AND the report's written narratives. It opens on an Introduction section, then flows in report order: Introduction, Background, the test sections, Summary, Outcomes, Provision, Previous Results, Resources Appendix. "Assessments included" pills at the top let Nichola add/remove which tests this child has had (MABC-2, BOT-2, VMI, SPM-2, COPM, Sensory Profile) — several can be active at once. Each test's score grid sits next to its own clinical narrative (scores auto-interpret with colour bands) and shows its pre-written intro inline. Background holds Reason for Referral & Background, Developmental & Medical History and Observations; Summary holds Clinical Interpretation, Functional Impact, Recommendations & Goals (these have a Draft button) and the Summary of OT Needs. The Introduction section holds the opening matter (Author's CV for Marie, Instructions, the Assessment Process), each pre-filled and editable as a per-child override, with a "Save to template" button that promotes an edit to the shared template for all future children. EVERY report field has a "In report / Not needed" toggle to include or exclude it from that child's report. Everything autosaves (a Saving/Saved indicator shows; there are no Save buttons).
+- Checklist tab: a workflow checklist grouped into phases (Intake, Assessment, Report Writing, etc.) that tracks steps like consent signed, referral received and questionnaire sent.
+- Goals tab: SMART goals with review dates; mark as achieved.
+- Sessions tab: session cards for this child; add/edit session notes; edit a session's date/type/time/duration/location without leaving the record.
+- Comms tab: log calls, emails and letters for this child.
+- Documents tab: upload and view this child's documents.
+- Timeline tab: a single chronological history of this child — sessions, comms, goals and documents in date order.
+- Sticky Note tab: a private free-text scratchpad for this child, kept separate from the clinical notes.
+- Clinical Notes tab: general clinical notes (parent/carer observations, referral info), separate from the per-session notes on the Sessions tab.
+- Intake forms: a blank Consent Form and Parent Questionnaire open to print from the client Overview's quick actions, and intake progress (consent signed, referral received, questionnaire sent) is ticked on the Checklist. There is no separate "Forms" tab.
+- Export tab: one unified full-report export with three buttons — Export as PDF, Export as Word, and Print/Preview. All three render the exact same content in the same order, honouring the per-field "Not needed" toggles, and only list the tests this child actually has. A Quick Exports card offers a Client One-Pager (PDF and Word) and the full Assessment Report.
 
-KEY FEATURES:
-- Global search: press Cmd+K or type in the search bar in the header
-- Dark mode: moon/sun button in the top-right header bar
-- Font size: click Aa button in header to adjust text size
-- Notifications bell: shows overdue invoices, EHCP deadlines, follow-ups, and reminders due today/overdue
-- Reminders / to-dos: a manual checklist on the Home page (a "📝 Reminders & to-dos" card, plus an "Add reminder" button next to Today's Plan). Each reminder is a line of text with an optional due date; tick to complete. Good for capturing ad-hoc tasks (e.g. things Marie asks for). Due-today/overdue reminders also surface in the notifications bell.
-- Cloud sync: Profile & Settings > Cloud Sync tab, enter Supabase URL + key
-- Lock / unlock: master password; optionally a quick PIN or Windows Hello if set up on the lock screen. The Shield/Lock button locks the dashboard.
+REPORTS AND EXPORTS:
+- One shared report engine builds the on-screen preview, the PDF and the Word version from a single model, so they always match exactly (same sections, order and wording).
+- Every report opens with an automatically numbered Contents page; if a section is toggled off it drops out and the rest renumber, so numbering can never fall out of step.
+- The "In report / Not needed" toggle on any field excludes it from ALL exports for that child only. The Assessment Process section lists only the tests actually carried out, and tests with no data print nothing (no empty headings).
+- A child can hold several dated assessments over time (Overview lists them; each has its own export and "New assessment" archives the current one rather than overwriting).
+- Marie (EHCP) format adds six extra sections, each with its own "In report / Not needed" toggle and its own phrase set: Postural Management & Equipment, plus Sleep, Communication, Cognition, Mood & Behaviour and Social & Relationships. They appear only on Marie reports and only when they contain text.
+- Every document (report, one-pager, invoice, CPD log, supervision record, session/observation record) uses one shared header — practice logo top-left next to the title — and an include/exclude-logo toggle on the Export tab applies to all of them. The therapist name, credentials, HCPC number and email come from Profile & Settings.
+- The Resources Appendix is built per child from the Resource Library (picture cards) and prints with no prices or sales links; an optional free-text box covers bespoke items.
 
-RECENT UPDATES (v84) — newest features:
-- Unified report engine: the report preview, PDF and Word now all build from one shared model, so they always match exactly (same sections, order and wording). A side effect of this is a fix — the "Assessment Process" section now lists only the assessments actually carried out for that child, instead of a fixed list of three.
-- Multiple assessments per child: a client can hold several dated assessments over time. The client Overview has an "Assessments" card listing each (editable label like "Initial" or "Annual review", plus a date); "Open" loads one into the Assessment tab and each has its own PDF/Word export button. "➕ New assessment" starts a fresh blank one and safely archives the current — nothing is overwritten. The Assessment tab also shows a matching dated selector at the top.
-- Pre-assessed referrals can later be assessed: a "➕ Start an assessment" button (on the record and the Assessment tab) lets Nichola assess a treatment-only referral herself; the uploaded external report stays in Documents.
-- Invoicing — Services & prices: Profile & Settings → Bank Details has a "Services & prices" list. Each entry is "per hour" or "flat fee" with a price and auto-fills on invoice lines (still editable per invoice). Defaults: £60/hr, £25/hr travel, 45p/mile, £480 Motor co-ordination assessment.
-- Cloud sync health: the Cloud Sync tab shows "Last synced …" and warns if sync has failed repeatedly (e.g. a paused free Supabase project). On unlock, if a newer cloud backup exists (from another device), it offers to restore it before overwriting. The header (top bar) also shows a small sync-status pill — "Synced" with how long ago, or a warning if sync is failing.
-- CSV export (all financials): Invoices, Expenses, the Mileage/travel log and the Tax estimate each have a "⬇ CSV" button (opens in Excel/Numbers) — useful for an accountant. Expenses and Mileage also have a Period toggle (All time / Month / Tax year / Custom) that scopes the list, totals and the download; Invoices has the same toggle scoped to its CSV.
-- Expenses PDF: the Expenses page also has a "⬇ PDF" — a branded report (logo header, summary by category, period total) for the chosen period.
-- Documents look identical in Word and PDF: every exportable document (Report, One-Pager, Session Log, Comms Log, Session/Observation Record) uses one shared header — practice logo top-left next to the title — and the Word and PDF versions now match in layout (the One-Pager details box and the session/comms rows render the same in both). The include/exclude-logo toggle on the Export tab applies to all of them.
-- CPD log PDF: the CPD page has a "⬇ Export PDF" button that produces a single tidy PDF of the whole log (every entry, reflections and total hours) for an HCPC audit.
-- Storage meter: the main Documents page shows how much of this device's storage the dashboard is using, with a warning as it fills. Browsers cap it at roughly 5 MB; big scans/photos use the most. Tip: keep large files in OneDrive and download/remove old documents to free space.
-- Permanent client deletion (GDPR erasure): for a DISCHARGED client only, the Archive tab has a "🗑 Delete" button. It first downloads a full backup of everything linked to that child, then asks you to TYPE "DELETE" to confirm, then permanently removes the client and their CLINICAL records (sessions, notes, documents, comms, goals, mileage, expenses, sticky note). INVOICES are deliberately KEPT — financial records that HMRC expects kept ~6 years — so if a child doesn't proceed, Nic still bills her time, the bill stays, and the child's records go. A kept invoice shows the child's name with a small "(erased)" tag. It can't be undone inside the app, and the backup it saves is for your records — it isn't auto-imported. Active clients are discharged first (they're not erased directly).
-- Invoice due date on the PDF: if an invoice has a due date, the exported PDF says "Payment is kindly requested by <date>"; otherwise it falls back to "within 30 days".
-- Unsaved-note guard: if you start typing a session note or observation and then click a different page or Back without saving, the dashboard asks before discarding the unsaved changes.
+SESSIONS AND NOTES:
+- Book a session in Calendar or Sessions; a session note captures attendance, goals, observations, client response and next steps, with a DNA (Did Not Attend) option and a "Copy previous note" button.
+- A session can use the Observation Form instead of the standard note — choose it when logging/booking, or switch with the Form pills inside the note editor. Its structure is editable under Templates, and observations export to PDF/Word.
+- After an action, the success message offers the obvious next step as a tappable button ("Write the note" after booking, "Log the journey" after a session note, "Next unpaid" after marking an invoice paid). They're optional.
+- If you start a note or observation and navigate away without saving, the dashboard asks before discarding the changes.
 
-LATEST ADDITIONS (newest first):
-- Report contents page: every report (standard and Marie) now opens with a numbered "Contents" list, between the cover details and the first section. It's built automatically from the sections that actually export, so if a section is toggled off it drops out of the contents and the rest renumber — the numbering can never fall out of step. It appears in the on-screen preview, the PDF and the Word version. (Section headings in the body stay unnumbered; numbering is only in the contents.)
-- New Marie report sections: Marie reports can now include six extra sections, each with its own "✓ In report / ✗ Not needed" toggle, edited in the client's "Marie Report" tab. They are: Postural Management & Equipment (after Self-Care), and five functional domains grouped after Sensory Processing — Sleep, Communication, Cognition, Mood & Behaviour, and Social & Relationships. They only appear on Marie reports and only when they have text. Each has its own phrase set behind the "💬 Phrases" button.
-- Word export for the money documents: the Travel/Mileage log and Expenses each now have "⬇ PDF" and "⬇ Word" buttons (period-aware, branded with the shared header), and the Invoice preview has a new "Word" button alongside Download PDF. So every financial document exports to CSV, PDF and Word.
-- Shared header on ALL documents: the invoice, CPD log and supervision records now use the same logo-top-left header as the reports (the old green banners are gone), so every document looks consistent. The include/exclude-logo toggle applies to them too.
-- Close-the-loop nudges: after you do something, the success message offers the obvious next step as a tappable button — "Write the note" after booking a session, "Log the journey" after saving a session note (not for phone calls or DNAs), and "Next unpaid →" after marking an invoice paid. They're optional; ignore them and they disappear.
-- First-run "Set up your practice" checklist: on the Home screen (mainly the blank LIVE build) a card walks through getting ready — recovery key, profile & credentials, practice details/letterhead, bank details, and adding the first client. Because details are pre-filled, it's a review-and-confirm ("Looks right" ticks) rather than a blank form, with a progress bar; it hides once complete and can be dismissed.
+INVOICING AND FINANCES:
+- Invoices are built from line items: "+ New Invoice", choose the client, add service lines. Each line's service comes from the configurable Services & prices list (Settings, Bank Details) and auto-fills its price (flat fee, or hourly rate x hours), still editable per line. Defaults: 60/hr, 25/hr travel time, 45p/mile mileage, 480 Motor co-ordination assessment.
+- Logged mileage and expenses can be ticked onto an invoice (released back to uninvoiced if it's deleted); travel time bills separately from mileage. Status is a Paid/Unpaid badge; "Overdue" is derived automatically from the due date and shows in the bell. The preview offers Download PDF and Download + Email. Marie sub-contract work is invoiced monthly as one consolidated invoice to the contractor.
+- Every financial document exports widely: Invoices, Expenses, Mileage and the Tax estimate each have a CSV button; Expenses and Mileage also have PDF and Word, and the invoice preview has a Word button. Expenses and Mileage have a Period toggle (All time / Month / Tax year / Custom) that scopes the list, totals and downloads.
 
-ADDING A NEW CLIENT (+ Add Client):
-- Assessments are chosen with multi-select pills (MABC-2, BOT-2, VMI, SPM-2, COPM, Sensory Profile) — tick all that apply, not just one — plus a "Use Marie report format" checkbox. Whatever is ticked sets up that child's Assessment tab.
-- Address fields have an optional postcode lookup: type a UK postcode, click 🔍 Find, and pick the exact address. This needs a free getAddress.io API key pasted into Profile & Settings → Practice (free tier is ~20 lookups/day). Without a key, just type the address manually.
+POWER FEATURES:
+- Global search: Cmd+K or the header search bar.
+- Display: dark/soft mode and a greyscale mode (for migraine sensitivity) in the top bar, plus an "Aa" font-size slider.
+- Notifications bell: overdue invoices, EHCP deadlines, follow-ups and reminders due today/overdue.
+- Reminders/to-dos: a manual checklist on Home, each an optional-dated line; due/overdue ones also show in the bell.
+- Lock/unlock: master password, with optional Windows Hello or Microsoft 365 sign-in for passwordless unlock if set up; the shield button locks the dashboard.
 
-CLIENT RECORD TABS:
-- Assessment tab: the single hub for ALL assessment data AND the report's written narratives (the old "Quick Report" tab has been merged in here). It opens on an "📖 Introduction" section, then flows in report order: Introduction → Background → the test sections → Summary → Outcomes → Provision → Previous Results → Resources Appendix. At the top, "Assessments included" pills let Nichola add/remove which tests this client has had (MABC-2, BOT-2, VMI, SPM-2, COPM, Sensory Profile) — she can have several at once, including both MABC-2 and BOT-2. Each test's score grid sits next to its own clinical narrative (scores auto-interpret with colour bands), and each test section also shows its pre-written intro inline so she can see exactly what prints. The report narratives live alongside the data: Background holds Reason for Referral & Background, Developmental & Medical History, Observations; Summary holds Clinical Interpretation, Functional Impact and Recommendations & Goals (these have an ✨ Draft button) plus the Summary of OT Needs. The 📖 Introduction section holds the report's opening matter (Author's CV for Marie, Instructions, the Assessment Process) — each box is pre-filled with the standard wording and editable as a per-child override; a "Save to template" button promotes an edit to the shared template for all future clients (names/pronouns auto-converted to placeholders). EVERY report field has a "✓ In report / ✗ Not needed" toggle to include or exclude it from that child's report, honoured by all exports. The tab also holds Fine Motor, Daily Living, Outcomes, Provision, a "Previous Results" section (earlier dated assessments), and a "Resources Appendix" (equipment chosen from the Resource Library). Everything autosaves — a "Saving…/Saved ✓" indicator shows and there are no Save buttons.
-- Per-field report control: every report narrative has a small "✓ In report / ✗ Not needed" toggle in its header. Switching a field to "Not needed" drops it from ALL exports (PDF, Word and Print/Preview) for that child only. The Export tab mirrors these choices and lists any individual fields left out.
-- Scores summary: there is NO separate Scores tab. The "Scores" button on the client Overview opens a read-only summary showing every completed test as a table, each with an Edit button that jumps to its section in the Assessment tab.
-- Checklist tab: workflow checklist grouped into phases (Intake, Assessment, Report Writing, etc.)
-- Goals tab: SMART goals with review dates; mark as achieved
-- Sessions tab: session cards for this client; add/edit session notes
-- Comms tab: log calls, emails, letters for this client
-- Documents tab: upload/view documents for this client
-- Forms tab: questionnaire, consent form with signature, referral letter
-- Export tab: ONE unified full-report export. Three buttons — Export as PDF, Export as Word, and Print/Preview (HTML, then use the browser's Print to save a PDF). All three render the exact same content in the same order, honouring the per-field "Not needed" toggles. The section list only shows the assessments this child actually has (tests they never had aren't listed). There's also a Quick Exports card with a "Client One-Pager" (now available as BOTH PDF and Word) and the full Assessment Report.
-- Report identity: the therapist name, credentials, HCPC number and email on the report header and sign-off come from Profile & Settings — update them there and every report follows.
+ON PHONE AND TABLET:
+- The dashboard is fully responsive. On small screens the sidebar becomes a slide-in drawer (open it with the menu button at the top-left), the header condenses, the stat tiles show as a compact grid, and wide tables scroll sideways.
+- There is a "Use desktop version" control — a monitor icon in the top bar and a "Use desktop version" link at the bottom of the menu drawer — that switches to the full desktop layout exactly as it looks on a PC; a matching control switches back, and the choice is remembered. Desktop computers are unaffected by any of this.
 
-PHRASE LIBRARY:
-- 7 sections (s1-s7 matching report sections)
-- Marie tab for Marie Assessment protocol phrases
-- The six new Marie report sections each have their own phrase set too: Sleep, Communication, Cognition, Mood & Behaviour and Social & Relationships sit under the Functional group; Postural Management sits under Recommendations. Open them with the "💬 Phrases" button on each field in the Marie Report tab.
-- Custom library: add your own saved phrases
-- Sentence builder: combine sentence parts
-- Use Phrases button on any report section to insert
+PROFILE & SETTINGS (open it from the name/logo or cog in the header):
+- Eight tabs: Personal; Practice (practice details, letterhead, and the optional getAddress.io postcode-lookup key); Bank Details (bank info plus the configurable Services & prices used on invoices); Tax & Registration; Security; Windows Hello; OneDrive; and Cloud Sync.
+- Security & sign-in: unlock by master password, or set up Windows Hello (fingerprint/face/PIN) or Microsoft 365 sign-in for passwordless unlock; change the master password; and generate a recovery key — do this BEFORE turning on cloud sync, because without it a forgotten password can't be recovered.
 
-INVOICING:
-- Invoices are built from LINE ITEMS. Click "+ New Invoice", choose the client, then add service lines. Each line's service comes from the configurable "Services & prices" list (Settings → Bank Details); picking one auto-fills its price — a flat fee, or an hourly rate × hours — still editable per line. Defaults: £60/hr, £25/hr travel time, 45p/mile mileage, £480 Motor co-ordination assessment.
-- Logged mileage and expenses can be attached to an invoice (tick to include); they're released back to "uninvoiced" if the invoice is deleted. Travel time is billed separately from mileage.
-- Status: click the badge to toggle Unpaid/Paid. "Overdue" is derived automatically from the due date (not set by hand) and shows in the notifications bell.
-- The invoice preview offers "Download PDF" and "Download + Email" (saves the PDF and opens a pre-filled email draft to attach it to).
-- Marie sub-contract work is invoiced to the contractor monthly as one consolidated invoice, addressed to Marie.
-- On the Invoices page, "Total Paid" includes archived paid invoices (matching the Tax page); "Outstanding" is unpaid and non-archived.
+DATA, BACKUP AND SECURITY:
+- All data is stored encrypted in this browser. An Export/Import JSON backup is available (Download/Upload buttons in the header), and the app also auto-saves periodic JSON backups to the Downloads folder as a safety net. The header shows a backup reminder (how recently you backed up) and a "Backups" button.
+- Optional Supabase cloud sync (Profile & Settings, Cloud Sync tab): data is AES-GCM encrypted on the device before sending, so Supabase only ever stores ciphertext. Set up a recovery key FIRST (Security tab) — because the backup is encrypted with the master password, a forgotten password means the backup can't be recovered either. Paste the Project URL and anon/public key, then Connect. A header pill shows sync status and warns if sync has failed (e.g. a paused free project); on unlock it offers to restore a newer backup made on another device.
+- OneDrive backup (Microsoft 365) is available on its own tab for auto-save, daily snapshots and manual backups.
+- GDPR erasure: for a DISCHARGED client only, the Archive tab has a Delete button that first downloads a full backup, then asks you to type DELETE to confirm, then permanently removes the child's clinical records (sessions, notes, documents, comms, goals, mileage, expenses, sticky note). Invoices are deliberately KEPT (HMRC expects ~6 years) and show the child's name with an "(erased)" tag.
 
-SESSIONS & NOTES:
-- Book session in Calendar or Sessions view
-- Session note: attendance, goals, observations, client response, next steps
-- DNA (Did Not Attend) checkbox
-- Copy previous note template button
-- Log a Session (Sessions view): records a past or unbooked session and opens the note editor straight away
-- Pre-assessed referral: for children assessed elsewhere (e.g. NHS) who only need treatment — tick the 📂 box when adding a client, or pick "➕ New client — pre-assessed referral" inside Log a Session. No assessment is required; upload the existing report from their Assessment tab (stored in Documents → Reports & Assessments)
-- Edit session details from inside the client: open a session note from the client's Sessions tab, click 'Edit Session Details', change the date/type/time/duration/location — you stay on the client's record (no need to go to the Calendar).
-- Template freeze: editing a template (report intros, Marie template, or the Observation Form structure) ONLY affects new and in-progress documents. Any report or observation already issued keeps the exact wording it was created with — past documents never change retrospectively. The content stays editable; only the shared template text is locked.
-- Observation Form: a session can use the 🧸 Observation Form instead of the standard note — choose it when logging/booking or switch with the Form pills inside the note editor. The form's headings, sub-headings and prompts are fully editable in Templates → 🧸 Observation Form; observation notes export to PDF/Word with the Observation Form sections
+ADDING A CLIENT:
+- Assessments are chosen with multi-select pills (MABC-2, BOT-2, VMI, SPM-2, COPM, Sensory Profile) plus a "Use Marie report format" checkbox. A pre-assessed (treatment-only) referral can be flagged and assessed later.
+- Address fields have an optional UK postcode lookup (type a postcode, click Find, pick the address) which needs a free getAddress.io API key in Profile & Settings, Practice; without one, just type the address.
 
-ASSESSMENTS (all entered in the Assessment tab; choose which apply via the pills at the top):
-- MABC-2: Manual Dexterity, Aiming & Catching, Balance — auto-interprets scores with colour bands
-- BOT-2: full scale scores + Total Motor Composite (a client can hold both MABC-2 and BOT-2)
-- VMI/VP/MC: Beery Visual Motor Integration
-- SPM-2: Sensory Processing Measure school & home forms (shows an at-a-glance Subscale/School/Home table)
-- COPM: Canadian Occupational Performance Measure (performance & satisfaction, pre & post)
-- Sensory Profile: quadrant raw scores + classification bands
-- Fine motor: hand preference, grip, pencil, in-hand, scissors, etc.
-- ADL: dressing, cutlery, toileting, washing
-- Previous Results: log earlier dated results of any test; reports print the latest in full plus a brief previous-results table for comparison.
-- The exported report only includes tests that have actually been completed (no empty sections) and now covers MABC-2, BOT-2, VMI, SPM-2, COPM and Sensory Profile.
-- Resources Appendix: equipment/resources are chosen per child from the Resource Library (picture cards), which is the single source for the appendix — there is no longer a hardcoded equipment list in the Marie template. The appendix prints as picture cards (print/preview) or a table (Word), with no prices or sales links, for both standard and Marie clients. An optional free-text box is available for any bespoke items not in the Library.
+TEST vs LIVE BUILD:
+- A TEST build shows an orange banner and can load or reload a 12-client demo dataset so features can be tried safely — that is sample data, not Nichola's real records. The LIVE build holds her real, private caseload; encourage her to experiment in the TEST build, not the live one.
 
-DATA STORAGE:
-- All data stored encrypted in browser localStorage
-- Export/Import JSON backup available (Download/Upload buttons in header)
-- Optional Supabase cloud sync: Profile & Settings → ☁ Cloud Sync tab. Data is AES-GCM encrypted on the device before it is sent, so Supabase only ever stores ciphertext. IMPORTANT: set up a recovery key first (Security tab) — because the cloud backup is encrypted with the master password, a forgotten password means the backup can't be recovered either. The setup SQL also turns on Row-Level Security.
-- OneDrive backup: Profile & Settings → ☁ OneDrive tab (Microsoft 365) — auto-save, daily snapshots and manual backups.
-
-Respond helpfully and succinctly. If asked how to do something, give step-by-step instructions. Use simple language. Be warm, encouraging, and practical.`;
+Respond helpfully and succinctly. If asked how to do something, give step-by-step instructions, use simple language, and be warm, encouraging and practical. If you're ever unsure whether a feature exists, say so and point to the User Guide rather than guessing.`;
 
 var HELP_QUICK_QUESTIONS = [
   'How do I add a new client?',
@@ -5609,6 +5581,16 @@ function scheduleODAutoSave(data) {
   }, 30000);
 }
 
+// ── Supabase auth headers ── legacy anon keys are JWTs (eyJ…) and go in the
+// Authorization header; the new publishable keys (sb_publishable_…) are NOT JWTs, so
+// sending them as a Bearer token makes Supabase reject the request with a 401. For those
+// we send only the apikey header and let Row-Level Security resolve the anon role. ──
+function _sbHeaders(key, extra) {
+  var h = Object.assign({ apikey: key }, extra || {});
+  if (/^eyJ/.test(key || '')) h.Authorization = 'Bearer ' + key;
+  return h;
+}
+
 // ── Supabase encrypted cloud sync — throttled ~30s; records sync health ──────
 let _sbPushTimer = null;
 let _sbPending = null; // last scheduled-but-not-yet-sent cloud payload, so hide/lock can flush it
@@ -5616,7 +5598,7 @@ function _sbDoPush(plain, cryptoKey, url, key) {
   return _encryptString(plain, cryptoKey).then(envelope =>
     fetch(`${url}/rest/v1/ot_data`, {
       method: 'POST',
-      headers: { 'Content-Type':'application/json', apikey:key, Authorization:`Bearer ${key}`, Prefer:'resolution=merge-duplicates' },
+      headers: _sbHeaders(key, { 'Content-Type':'application/json', Prefer:'resolution=merge-duplicates' }),
       body: JSON.stringify({ id:'main', payload:{ enc:1, d:envelope }, updated_at:new Date().toISOString() }),
     }).then(r => {
       if (r.ok) { localStorage.setItem('ot-sb-last-sync', new Date().toISOString()); localStorage.setItem('ot-sb-fail','0'); }
@@ -7478,7 +7460,7 @@ function HomeDashboard({ data, updateData, setView, setClientsNav, setSelectedCl
       )}
 
       {/* ── STAT CARDS ─────────────────────────────────────────────────── */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:16, marginBottom:24 }}>
+      <div className="stat-grid" style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:16, marginBottom:24 }}>
         {statCards.map(({ label, value, icon: Icon, color, onClick }) => (
           <div key={label} onClick={onClick} style={{ background:T.card, border:`1px solid ${T.sandBorder}`, borderRadius:10, padding:'20px 20px 16px', cursor:'pointer', transition:'box-shadow 0.15s' }}
             onMouseEnter={e => e.currentTarget.style.boxShadow='0 4px 16px rgba(74,124,111,0.12)'}
@@ -20195,7 +20177,7 @@ function ProfileSettingsModal({ data, updateData, addToast, onClose, onLock, ini
     if (_u !== sbUrl) setSbUrl(_u); if (_k !== sbKey) setSbKey(_k);
     setSbSyncing(true); setSbStatus(null);
     try {
-      const res = await fetch(`${_u}/rest/v1/ot_data?select=id&limit=1`, { headers:{ apikey:_k, Authorization:`Bearer ${_k}` } });
+      const res = await fetch(`${_u}/rest/v1/ot_data?select=id&limit=1`, { headers: _sbHeaders(_k) });
       if (res.ok || res.status===406) {
         updateData(d=>({...d, settings:{...d.settings, supabaseUrl:_u, supabaseKey:_k }}));
         setSbStatus({ ok:true, msg:'Connected! Your data will sync automatically on every save — encrypted before leaving your device.' });
@@ -20218,7 +20200,7 @@ function ProfileSettingsModal({ data, updateData, addToast, onClose, onLock, ini
     try {
       const res = await fetch(
         `${s.supabaseUrl}/rest/v1/ot_data?id=eq.main&select=payload`,
-        { headers: { apikey: s.supabaseKey, Authorization: `Bearer ${s.supabaseKey}` } }
+        { headers: _sbHeaders(s.supabaseKey) }
       );
       if (!res.ok) { setSbStatus({ ok:false, msg:`Fetch failed: ${res.status}` }); return; }
       const rows = await res.json();
@@ -23033,6 +23015,12 @@ function App() {
   const [toasts, setToasts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
+  // ── Desktop-view escape hatch (handheld only): force the full desktop layout by widening the viewport ──
+  const [isHandheld] = useState(() => { try { return (((window.screen && window.screen.width) || 9999) <= 1024); } catch(e){ return false; } });
+  const [desktopView, setDesktopView] = useState(() => { try { return localStorage.getItem('npot-desktop-view') === '1'; } catch(e){ return false; } });
+  const _applyViewport = (on) => { try { var m = document.querySelector('meta[name="viewport"]'); if (m) m.setAttribute('content', on ? 'width=1280' : 'width=device-width, initial-scale=1.0'); } catch(e){} };
+  React.useEffect(() => { if (desktopView) _applyViewport(true); }, []);
+  const toggleDesktopView = () => { setDesktopView(v => { const nv = !v; try { localStorage.setItem('npot-desktop-view', nv ? '1' : '0'); } catch(e){} _applyViewport(nv); return nv; }); };
   const [annieOpen, setAnnieOpen] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -23118,14 +23106,14 @@ function App() {
       const su = resolved.settings?.supabaseUrl, sk = resolved.settings?.supabaseKey;
       if (su && sk) {
         const localT = localStorage.getItem('ot-sb-last-sync') ? new Date(localStorage.getItem('ot-sb-last-sync')).getTime() : 0;
-        fetch(`${su}/rest/v1/ot_data?id=eq.main&select=updated_at`, { headers:{ apikey:sk, Authorization:`Bearer ${sk}` } })
+        fetch(`${su}/rest/v1/ot_data?id=eq.main&select=updated_at`, { headers: _sbHeaders(sk) })
           .then(r => r.ok ? r.json() : [])
           .then(rows => {
             if (!rows.length || !rows[0].updated_at) return;
             const cloudT = new Date(rows[0].updated_at).getTime();
             if (cloudT <= localT + 60000) return; // not meaningfully newer than our own last push
             if (!window.confirm('A newer backup was found in the cloud (saved ' + new Date(rows[0].updated_at).toLocaleString('en-GB') + ') — likely from another device.\n\nRestore it now? This replaces what is currently on screen.\n\nCancel = keep what is on screen (it will overwrite the cloud on your next change).')) return;
-            fetch(`${su}/rest/v1/ot_data?id=eq.main&select=payload`, { headers:{ apikey:sk, Authorization:`Bearer ${sk}` } })
+            fetch(`${su}/rest/v1/ot_data?id=eq.main&select=payload`, { headers: _sbHeaders(sk) })
               .then(r => r.ok ? r.json() : [])
               .then(async prows => {
                 const payload = prows[0] && prows[0].payload; const ck = _getCurrentKey();
@@ -23330,7 +23318,7 @@ function App() {
         <button onClick={()=>{ if(window.confirm('Reload the full 12-client demo dataset? This will replace the current data.')){ updateData(()=>({...window.__DEMO_DATA__})); addToast('Demo data reloaded — 12 clients ready!'); }}} style={{ background:'rgba(255,255,255,0.25)', border:'1px solid rgba(255,255,255,0.5)', color:'white', borderRadius:8, padding:'3px 12px', fontSize:11, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>🔄 Reload demo data</button>
       </div>
       )}
-      <header style={{ background:T.sage, color:'white', padding:'0 20px', display:'flex', alignItems:'center', justifyContent:'space-between', height:56, position:'sticky', top:0, zIndex:100, boxShadow:'0 2px 8px rgba(30,40,32,0.2)' }}>
+      <header className="app-header" style={{ background:T.sage, color:'white', padding:'0 20px', display:'flex', alignItems:'center', justifyContent:'space-between', height:56, position:'sticky', top:0, zIndex:100, boxShadow:'0 2px 8px rgba(30,40,32,0.2)' }}>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
           <button onClick={()=>setNavOpen(n=>!n)} style={{ background:'none', border:'none', color:'white', cursor:'pointer', padding:'4px 8px 4px 0', display:'flex', alignItems:'center' }}><Menu size={18}/></button>
           {view !== 'home' && (() => {
@@ -23355,13 +23343,13 @@ function App() {
           <button onClick={()=>setShowProfile(true)} title="Profile & Settings" style={{ background:'none', border:'none', padding:0, cursor:'pointer', display:'flex', alignItems:'center', borderRadius:'50%' }}>
             <img src={FERN_LOGO} alt="Nichola Philbey OT" style={{ width:36, height:36, objectFit:"contain", borderRadius:'50%', transition:'transform 0.15s' }}/>
           </button>
-          <button onClick={()=>setShowProfile(true)} title="Profile & Settings" style={{ background:'none', border:'none', padding:0, cursor:'pointer', textAlign:'left' }}>
+          <button className="hide-phone" onClick={()=>setShowProfile(true)} title="Profile & Settings" style={{ background:'none', border:'none', padding:0, cursor:'pointer', textAlign:'left' }}>
             <div style={{ fontSize:14, fontWeight:700, lineHeight:1.2, color:'white' }}>{(data.settings && data.settings.fullName) || 'Nichola Philbey'}</div>
             <div style={{ fontSize:11, opacity:0.75, lineHeight:1, color:'white' }}>{(data.settings && data.settings.jobTitle) || 'Occupational Therapist'}</div>
           </button>
         </div>
-        <GlobalSearch data={data} setView={setView} onNavigate={(clientId)=>{ /* future: open client directly */ }}/>
-        <div style={S.row12}>
+        <div className="app-search" style={{ flex:1, maxWidth:380, minWidth:0, display:'flex' }}><GlobalSearch data={data} setView={setView} onNavigate={(clientId)=>{ /* future: open client directly */ }}/></div>
+        <div className="app-actions" style={S.row12}>
           <ExportImport {...props}/>
           <NotificationBell data={data} setView={setView}/>
           {data.settings?.supabaseUrl && (() => {
@@ -23411,6 +23399,12 @@ function App() {
             style={{ background: greyMode ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.15)', color:'white', border: greyMode ? '1px solid rgba(255,255,255,0.5)' : '1px solid transparent', borderRadius:8, padding:'6px 8px', fontSize:12, cursor:'pointer', display:'inline-flex', alignItems:'center' }}>
             <Contrast size={14}/>
           </button>
+          {isHandheld && (
+            <button onClick={toggleDesktopView} title={desktopView ? 'Switch back to mobile view' : 'Switch to the full desktop version'}
+              style={{ background:'rgba(255,255,255,0.15)', color:'white', border:'1px solid transparent', borderRadius:8, padding:'6px 8px', fontSize:13, cursor:'pointer', display:'inline-flex', alignItems:'center', lineHeight:1 }}>
+              {desktopView ? '\u{1F4F1}' : '\u{1F5A5}'}
+            </button>
+          )}
           <button onClick={lockApp} title="Lock dashboard"
             style={{ background:'rgba(255,255,255,0.15)', color:'white', border:'1px solid transparent', borderRadius:8, padding:'6px 8px', fontSize:12, cursor:'pointer', display:'inline-flex', alignItems:'center' }}>
             <Shield size={14}/>
@@ -23419,8 +23413,9 @@ function App() {
       </header>
 
       <div style={{ display:'flex', flex:1 }}>
+        {navOpen && <div className="nav-scrim" onClick={()=>setNavOpen(false)} />}
         {/* Sidebar nav */}
-        <nav style={{ width:navOpen?200:72, background:T.card, borderRight:`1px solid ${T.sandBorder}`, transition:'width 0.2s', flexShrink:0, position:'sticky', top:56, height:'calc(100vh - 56px)', overflowX:'hidden', overflowY:'auto' }}>
+        <nav className={"app-nav" + (navOpen ? " nav-open" : "")} style={{ width:navOpen?200:72, background:T.card, borderRight:`1px solid ${T.sandBorder}`, transition:'width 0.2s', flexShrink:0, position:'sticky', top:56, height:'calc(100vh - 56px)', overflowX:'hidden', overflowY:'auto' }}>
           <div style={{ padding:'8px 0', display:'flex', flexDirection:'column', gap:1 }}>
             {NAV_ITEMS.map(({ key, label, icon:Icon }) => {
               const isFinances = key === 'finances';
@@ -23462,10 +23457,18 @@ function App() {
               );
             })}
           </div>
+          {isHandheld && !desktopView && (
+            <div style={{ borderTop:`1px solid ${T.sandBorder}`, padding:8 }}>
+              <button onClick={()=>{ toggleDesktopView(); setNavOpen(false); }}
+                style={{ display:'flex', alignItems:'center', gap:8, width:'100%', padding:'10px 12px', background:'transparent', border:`1px solid ${T.sandBorder}`, borderRadius:8, color:T.inkMid, fontSize:13, fontWeight:600, cursor:'pointer' }}>
+                <span style={{ fontSize:15 }}>{'\u{1F5A5}'}</span> Use desktop version
+              </button>
+            </div>
+          )}
         </nav>
 
         {/* Main content */}
-        <main style={{ flex:1, overflowY:'auto', minHeight:0 }}>
+        <main className="app-main" style={{ flex:1, overflowY:'auto', minHeight:0 }}>
           {showProfile
             ? <ProfileSettingsModal data={data} updateData={updateData} addToast={addToast} onClose={()=>setShowProfile(false)} onLock={lockApp} initialTab={profileTab}/>
             : (views[view] || views.home)}
@@ -23522,6 +23525,46 @@ function App() {
         /* Reduce harsh transitions */
         * { transition-duration: 0s !important; }
         button, a, [role="button"] { transition: opacity 0.15s !important; }
+        /* Responsive: phone + tablet. Desktop (>=1025px) is completely untouched. */
+        .nav-scrim { display: none; }
+        @media (max-width: 1024px) {
+          html, body { overflow-x: hidden !important; max-width: 100vw; }
+          .app-nav {
+            position: fixed !important; top: 0 !important; left: 0;
+            width: min(82vw, 290px) !important; height: 100vh !important;
+            transform: translateX(-100%);
+            transition: transform 0.25s ease !important; transition-duration: 0.25s !important;
+            z-index: 600; box-shadow: 2px 0 30px rgba(0,0,0,0.30);
+            overflow-y: auto !important; padding-top: 10px;
+          }
+          .app-nav.nav-open { transform: translateX(0); }
+          .nav-scrim { display: block; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 590; }
+          .app-main { width: 100% !important; max-width: 100% !important; }
+          .app-main * { max-width: 100% !important; }
+          .app-main table { display: block !important; overflow-x: auto !important; -webkit-overflow-scrolling: touch; white-space: nowrap; width: 100%; }
+          .app-header { padding: 0 10px !important; gap: 6px; }
+        }
+        @media (max-width: 600px) {
+          .hide-phone { display: none !important; }
+          .app-search { display: none !important; }
+          .app-main [style*="grid-template-columns"] { grid-template-columns: 1fr !important; }
+          .app-main .stat-grid { grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
+          .app-main .stat-grid > div { padding: 12px 12px 11px !important; }
+          .app-main .stat-grid > div > div:first-child { margin-bottom: 6px !important; }
+          .app-header { padding: 0 8px !important; }
+          .app-actions { gap: 4px !important; }
+          /* Tighten density so the phone view is compact, not loose */
+          .app-main [style*="display: flex"] { flex-wrap: wrap; }
+          .app-main [style*="padding: 24px 20px"],
+          .app-main [style*="padding: 16px 20px"],
+          .app-main [style*="padding: 16px 18px"],
+          .app-main [style*="padding: 14px 18px"],
+          .app-main [style*="padding: 18px"],
+          .app-main [style*="padding: 16px"] { padding: 11px 13px !important; }
+          .app-main [style*="margin-bottom: 24px"] { margin-bottom: 14px !important; }
+          .app-main [style*="margin-bottom: 20px"] { margin-bottom: 12px !important; }
+          .app-main [style*="gap: 14px"] { gap: 10px !important; }
+        }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @media print {
           body { background: white !important; margin: 0 !important; }
