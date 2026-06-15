@@ -24155,6 +24155,16 @@ function App() {
   if (cryptoState !== 'unlocked') {
     return <AuthScreen mode={cryptoState} onAuthenticated={handleAuthenticated}/>;
   }
+  // Unlocked, but the encrypted blob may still be loading/pulling from cloud:
+  // render the loading screen rather than the shell so nothing reads a null `data`.
+  if (!data) {
+    return (
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', background:T.sand, flexDirection:'column', gap:12 }}>
+        <img src={FERN_LOGO} alt="Nichola Philbey OT" style={{ width:48, height:48, objectFit:"contain", borderRadius:'50%' }}/>
+        <div style={{ fontSize:14, color:T.inkLight }}>Loading…</div>
+      </div>
+    );
+  }
 
   const props = { data, updateData, addToast };
 
