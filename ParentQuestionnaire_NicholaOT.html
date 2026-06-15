@@ -222,6 +222,16 @@
           <input type="text" class="field-input" placeholder="e.g. Dr Patel, Clifton Down Surgery">
         </div>
       </div>
+      <div class="field-row single">
+        <div class="field-group">
+          <label class="field-label">Is your child currently, or have they previously been, in the care of the local authority (sometimes called a &lsquo;looked after child&rsquo;)?</label>
+          <div class="radio-group" style="margin-top:6px">
+            <label class="radio-item"><input type="radio" name="looked-after" value="yes"> Yes</label>
+            <label class="radio-item"><input type="radio" name="looked-after" value="no"> No</label>
+          </div>
+          <input type="text" class="field-input" style="margin-top:8px" placeholder="If yes, please give brief details">
+        </div>
+      </div>
     </div>
 
     <!-- Section 2: About you -->
@@ -284,8 +294,8 @@
       </div>
       <div class="field-row single">
         <div class="field-group">
-          <label class="field-label">What are your main concerns about your child? <span class="req">*</span></label>
-          <textarea class="field-input" rows="5" placeholder="Please describe in your own words — e.g. difficulties with handwriting, coordination, self-care, sensory sensitivities, attention, emotional regulation, social interaction..."></textarea>
+          <label class="field-label">What challenges have you noticed your child experiencing with their development or daily functioning? <span class="req">*</span></label>
+          <textarea class="field-input" rows="5" placeholder="Please describe in your own words — e.g. challenges with handwriting, coordination, self-care, sensory sensitivities, attention, emotional regulation, social interaction..."></textarea>
         </div>
       </div>
       <div class="field-row single">
@@ -307,7 +317,7 @@
       </div>
       <div class="field-row">
         <div class="field-group">
-          <label class="field-label">How long have you noticed these difficulties?</label>
+          <label class="field-label">When did you first notice these challenges?</label>
           <input type="text" class="field-input" placeholder="e.g. Since birth / since starting school / last 2 years">
         </div>
         <div class="field-group">
@@ -351,7 +361,7 @@
       <div class="field-row">
         <div class="field-group">
           <label class="field-label">Any diagnosed conditions?</label>
-          <input type="text" class="field-input" placeholder="e.g. ADHD, autism, DCD, anxiety, hypermobility — or 'none'">
+          <input type="text" class="field-input" placeholder="e.g. ADHD, autism, DCD, cerebral palsy, anxiety, hypermobility — or 'none'">
         </div>
         <div class="field-group">
           <label class="field-label">Any conditions being investigated / awaiting diagnosis?</label>
@@ -394,11 +404,11 @@
       </div>
     </div>
 
-    <!-- Section 5: Sensory profile -->
+    <!-- Section 5: Sensory differences -->
     <div class="section">
-      <div class="section-heading amber">🌡️ Section 5 — Sensory Profile</div>
+      <div class="section-heading amber">🌡️ Section 5 — Sensory Differences</div>
       <div class="info-box">
-        This section helps Nichola understand how your child experiences sensory information. Even if sensory difficulties are not your main concern, this context is valuable for the assessment.
+        This section helps Nichola understand how your child experiences sensory information. Even if sensory differences are not your main concern, this context is valuable for the assessment.
       </div>
       <div class="field-row single">
         <div class="field-group">
@@ -430,7 +440,7 @@
       </div>
       <div class="field-row single">
         <div class="field-group">
-          <label class="field-label">Please describe any sensory difficulties in more detail</label>
+          <label class="field-label">Please describe any sensory differences in more detail</label>
           <textarea class="field-input" rows="3" placeholder="Tell us more about what you've noticed — when it's worse, what helps, any particular triggers..."></textarea>
         </div>
       </div>
@@ -584,9 +594,9 @@
     <div class="section">
       <div class="section-heading">📋 Section 3 — Reason for Referral</div>
       <div class="q-card"><div class="q-num">Q15 <span class="q-type">Choice · Single · Required</span></div><div class="q-text">Who is referring your child?</div><div class="q-sub">Options: Self / family · School / SENCO · GP · Paediatrician · Other professional</div></div>
-      <div class="q-card"><div class="q-num">Q16 <span class="q-type">Text · Long · Required</span></div><div class="q-text">What are your main concerns about your child?</div><div class="q-sub">Subtitle: Please write in your own words — e.g. handwriting, coordination, self-care, sensory sensitivities, attention, emotional regulation</div></div>
+      <div class="q-card"><div class="q-num">Q16 <span class="q-type">Text · Long · Required</span></div><div class="q-text">What challenges have you noticed your child experiencing with their development or daily functioning?</div><div class="q-sub">Subtitle: Please write in your own words — e.g. handwriting, coordination, self-care, sensory sensitivities, attention, emotional regulation</div></div>
       <div class="q-card"><div class="q-num">Q17 <span class="q-type">Choice · Multi-select</span></div><div class="q-text">Which areas are most affected day to day?</div><div class="q-sub">Options: Handwriting / fine motor · Gross motor / coordination · Self-care · Sensory sensitivities · Attention / concentration · Emotional regulation · Social interaction · Organisation / planning · School participation · Sleep / settling</div></div>
-      <div class="q-card"><div class="q-num">Q18 <span class="q-type">Text · Short</span></div><div class="q-text">How long have you noticed these difficulties?</div></div>
+      <div class="q-card"><div class="q-num">Q18 <span class="q-type">Text · Short</span></div><div class="q-text">When did you first notice these challenges?</div></div>
       <div class="q-card"><div class="q-num">Q19 <span class="q-type">Choice · Single</span></div><div class="q-text">Are difficulties getting better, worse, or staying the same?</div><div class="q-sub">Options: Better · Same · Worse</div></div>
       <div class="q-card"><div class="q-num">Q20 <span class="q-type">Text · Long</span></div><div class="q-text">What do you hope OT will help your child with?</div></div>
       <div class="q-card"><div class="q-num">Q21 <span class="q-type">Text · Long</span></div><div class="q-text">What are your child's strengths and things they enjoy?</div></div>
@@ -606,10 +616,10 @@
     </div>
 
     <div class="section">
-      <div class="section-heading amber">🌡️ Section 5 — Sensory Profile</div>
+      <div class="section-heading amber">🌡️ Section 5 — Sensory Differences</div>
       <div class="q-card"><div class="q-num">Q31 <span class="q-type">Choice · Multi-select</span></div><div class="q-text">Sensory sensitivities noticed</div><div class="q-sub">Options: Sensitive to loud noises · Clothing textures / labels · Food textures / smells · Dislikes unexpected touch · Bright lights · Strong smells · Face washing / haircuts / nail cutting · Overwhelmed in busy places</div></div>
       <div class="q-card"><div class="q-num">Q32 <span class="q-type">Choice · Multi-select</span></div><div class="q-text">Sensory-seeking behaviours</div><div class="q-sub">Options: Craves spinning / swinging / rocking · Seeks deep pressure · Chews clothing / objects · Crashes into things · Constantly on the move · Touches everything</div></div>
-      <div class="q-card"><div class="q-num">Q33 <span class="q-type">Text · Long</span></div><div class="q-text">Please describe any sensory difficulties in more detail</div></div>
+      <div class="q-card"><div class="q-num">Q33 <span class="q-type">Text · Long</span></div><div class="q-text">Please describe any sensory differences in more detail</div></div>
       <div class="q-card"><div class="q-num">Q34 <span class="q-type">Text · Long</span></div><div class="q-text">How does your child manage unexpected changes or transitions?</div></div>
     </div>
 
@@ -705,7 +715,7 @@
     </div>
 
     <div class="section">
-      <div class="section-heading amber">🌡️ Section 5 — Sensory Profile</div>
+      <div class="section-heading amber">🌡️ Section 5 — Sensory Differences</div>
       <div class="field-row single"><div class="field-group"><label class="field-label">Sensory sensitivities — tick all that apply</label>
         <div class="checklist-grid" style="margin-top:8px">
           <label class="check-item"><input type="checkbox"><span class="check-label">Sensitive to loud noises</span></label>
@@ -801,7 +811,7 @@
         const krows = kr.ok ? await kr.json() : [];
         if (!krows.length || !krows[0].jwk) { alert('This form is not set up to receive submissions yet \u2014 please contact Nichola directly.'); return; }
         const answers = {};
-        document.querySelectorAll('#content-digital input, #content-digital textarea, #content-digital select').forEach(function(el,i){ const key = el.id || el.name || ('field_'+i); answers[key] = (el.type==='checkbox') ? el.checked : el.value; });
+        document.querySelectorAll('#content-digital input, #content-digital textarea, #content-digital select').forEach(function(el,i){ var _gp = el.closest('.field-group'); var _lb = _gp ? _gp.querySelector('.field-label') : null; var key = el.id || el.name || (_lb ? _lb.textContent.replace(/\*/g,'').trim() : ('field_'+i)); answers[key] = (el.type==='checkbox') ? el.checked : el.value; });
         const env = await _intakeEncrypt(krows[0].jwk, JSON.stringify(answers));
         const r = await fetch(SB_URL + '/rest/v1/intake_submissions', { method:'POST', headers:{ apikey: SB_KEY, 'Content-Type':'application/json' }, body: JSON.stringify({ form_type:'questionnaire_child', payload: env }) });
         if (!(r.ok || r.status===201)) throw new Error('status ' + r.status);
