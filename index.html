@@ -337,6 +337,12 @@ window.buildReportModel = function(client, data, clientScores) {
     N.push({ kind:'adhoc', key:'adhoc', heading:assessment.adhocTitle, edit:{type:'clients',arg:client.id},
       secs: _adhocSecs.map(function(s){ return { heading:(s.heading||'').trim()?s.heading:null, text:(s.text||'').trim()?rn(s.text):null }; }) });
   }
+  // 17b · Observation assessment (pre-seeded from the Observation Form template)
+  var _obsSecs = (assessment.observationSections||[]).filter(function(s){ return inc('observation_'+s.id) && ((s.heading||'').trim() || (s.text||'').trim()); });
+  if (_isActive('Observation') && _obsSecs.length) {
+    N.push({ kind:'adhoc', key:'observation', heading:(assessment.observationTitle||'').trim()||'Observation', edit:{type:'clients',arg:client.id},
+      secs: _obsSecs.map(function(s){ return { heading:(s.heading||'').trim()?s.heading:null, text:(s.text||'').trim()?rn(s.text):null }; }) });
+  }
 
   // 18 · Previous assessment results
   var _hist = (client.assessmentHistory||[]);
@@ -1580,6 +1586,30 @@ var EYO_TEMPLATE_DEFAULTS = { sections: [
   ]},
 ]};
 function getEyoTemplate(settings){ return (settings && settings.eyoTemplate) || EYO_TEMPLATE_DEFAULTS; }
+var SESSION_NOTE_TEMPLATE_DEFAULTS = { fields: [
+  { id:'goals',         label:'Session Goals',                  prompt:'What were the goals/aims for this session?', rows:4, boilerplate:'' },
+  { id:'observations',  label:'Observations / What Happened',   prompt:'What activities were carried out? What did you observe?', rows:8, boilerplate:'' },
+  { id:'clientResponse',label:'Cooperation and Motivation',     prompt:'How did the child engage? Cooperation, motivation, mood, energy\u2026', rows:5, boilerplate:'' },
+  { id:'nextSteps',     label:'Next Steps & Actions',           prompt:'What needs to happen before the next session? Actions for family/school/OT?', rows:5, boilerplate:'' },
+  { id:'text',          label:'Additional Notes',               prompt:'Anything else to record\u2026', rows:3, boilerplate:'' },
+] };
+function getSessionNoteTemplate(settings){ var t = (settings && settings.sessionNoteTemplate); return (t && Array.isArray(t.fields) && t.fields.length) ? t : SESSION_NOTE_TEMPLATE_DEFAULTS; }
+var EMAIL_TEMPLATE_DEFAULTS = {
+  intake: {
+    subject: 'Occupational Therapy \u2014 getting started',
+    body: 'Hello [NAME],\n\nThank you for getting in touch \u2014 I look forward to working with you. To get started, please complete these two short forms when you have a moment (around 10 minutes in total):\n\n1. Consent form:\n[CONSENT_LINK]\n\n2. Questionnaire (some background and your main concerns):\n[QUESTIONNAIRE_LINK]\n\nYour answers are encrypted and sent securely straight to me \u2014 only I can read them. Once they are in, I will be in touch to arrange the next step.\n\nIf you have any questions, just reply to this email.\n\nWarm wishes,\n[SENDER]'
+  },
+  invoice: {
+    subject: 'Invoice [INVOICE_NO] \u2014 Occupational Therapy',
+    body: 'Dear [NAME],\n\nPlease find attached invoice [INVOICE_NO] for occupational therapy services. (The PDF has just downloaded to your device \u2014 please attach it to this email.)\n\nAmount: \u00a3[AMOUNT][DUE]\n\nPlease don\u2019t hesitate to contact me with any queries.\n\nKind regards,\n[SENDER]'
+  }
+};
+function getEmailTemplate(settings, key){ var t=(settings&&settings.emailTemplates&&settings.emailTemplates[key]); var d=EMAIL_TEMPLATE_DEFAULTS[key]||{subject:'',body:''}; return { subject:(t&&t.subject)||d.subject, body:(t&&t.body)||d.body }; }
+function _fillTpl(str, vars){ return String(str||'').replace(/\[([A-Z_]+)\]/g, function(m,k){ return (k in vars) ? String(vars[k]) : m; }); }
+// Baked-in practice cloud (publishable key + URL are public-safe: protected by RLS, and data is encrypted with the master password before upload).
+var SB_URL_DEFAULT = 'https://oufbdwbkurlepyskoooe.supabase.co';
+var SB_KEY_DEFAULT = 'sb_publishable_O8cX_cDWkZZKl4F-77T-2w_CeeTnRP0';
+var FORM_DEFS = {"consent_child": {"sections": [{"heading": "👤 Section 1 — Child's Details", "fields": [{"label": "Child's first name", "type": "text"}, {"label": "Child's surname", "type": "text"}, {"label": "Date of birth", "type": "text"}, {"label": "Gender", "type": "select"}, {"label": "Year group / school year", "type": "select"}, {"label": "School name", "type": "text"}, {"label": "Local authority / borough", "type": "text"}, {"label": "Any known diagnoses or conditions", "type": "text"}, {"label": "GP / paediatrician name and practice", "type": "text"}, {"label": "Does your child have an EHCP (Education, Health and Care Plan)?", "type": "text"}]}, {"heading": "👨‍👩‍👧 Section 2 — Parent / Guardian Details", "fields": [{"label": "Your first name", "type": "text"}, {"label": "Your surname", "type": "text"}, {"label": "Relationship to child", "type": "select"}, {"label": "Parental responsibility", "type": "text"}, {"label": "Email address", "type": "text"}, {"label": "Phone number", "type": "text"}, {"label": "Home address", "type": "long"}, {"label": "Second parent / guardian name and contact (if applicable)", "type": "text"}]}, {"heading": "📋 Section 3 — Reason for Referral", "fields": [{"label": "Who is referring your child?", "type": "text"}, {"label": "What are your main concerns about your child?", "type": "long"}, {"label": "When did you first notice these difficulties?", "type": "text"}, {"label": "What do you hope OT will help with?", "type": "long"}, {"label": "Has your child received OT, physiotherapy, or SALT input before?", "type": "text"}]}, {"heading": "🔒 Section 4 — Privacy & Data Use", "fields": [{"label": "I understand that Nichola Philbey OT will store personal and health information about my child in a secure, encrypted system for the purpose of providing occupational therapy services.", "type": "check"}, {"label": "I understand that assessment reports will be shared with me and, with my agreement, may be shared with named professionals involved in my child's care (e.g. school SENCO, GP, paediatrician).", "type": "check"}, {"label": "I agree to Nichola contacting my child's school for background information and to share relevant recommendations. (You can say no — this will not affect your child's OT service.)", "type": "check"}, {"label": "I agree to Nichola sharing a summary with my child's GP for their medical records. (Optional — you can change this at any time.)", "type": "check"}, {"label": "I agree to anonymised, unidentifiable information being used for professional development, supervision, and service improvement purposes. No identifying details will ever be shared.", "type": "check"}]}, {"heading": "✅ Section 5 — Consent to Assess & Treat", "fields": [{"label": "I consent to Nichola Philbey carrying out an occupational therapy assessment of my child, using standardised and observational methods appropriate to their age and presentation.", "type": "check"}, {"label": "I consent to my child receiving occupational therapy treatment as agreed, which may include direct sessions, home programmes, and liaison with school.", "type": "check"}, {"label": "I consent to Nichola taking brief observational notes during sessions to inform clinical reasoning and report writing.", "type": "check"}, {"label": "I understand the cancellation policy: sessions cancelled with less than 48 hours' notice may be charged at the full session rate. I will notify Nichola as soon as possible if my child cannot attend.", "type": "check"}]}, {"heading": "🚨 Section 6 — Emergency Contact & Safeguarding", "fields": [{"label": "Emergency contact name (if different from above)", "type": "text"}, {"label": "Emergency contact phone", "type": "text"}, {"label": "I understand that in exceptional circumstances relating to safeguarding, information may be shared with appropriate agencies in the best interests of my child.", "type": "check"}]}, {"heading": "✍️ Section 7 — Declaration & Signature", "fields": [{"label": "Date", "type": "text"}, {"label": "Any questions or additional information for Nichola before your first appointment?", "type": "long"}]}]}, "questionnaire_child": {"sections": [{"heading": "👤 Section 1 — About Your Child", "fields": [{"label": "Child's full name", "type": "text"}, {"label": "Preferred name / nickname", "type": "text"}, {"label": "Date of birth", "type": "text"}, {"label": "Gender", "type": "select"}, {"label": "Year group", "type": "select"}, {"label": "School name", "type": "text"}, {"label": "Class teacher", "type": "text"}, {"label": "SENCO name", "type": "text"}, {"label": "GP name & surgery", "type": "text"}]}, {"heading": "👨‍👩‍👧 Section 2 — About You", "fields": [{"label": "Your full name", "type": "text"}, {"label": "Relationship to child", "type": "select"}, {"label": "Best phone number", "type": "text"}, {"label": "Email address", "type": "text"}, {"label": "Home address", "type": "long"}, {"label": "Second parent / carer contact (if applicable)", "type": "text"}]}, {"heading": "📋 Section 3 — Reason for Referral", "fields": [{"label": "Who is referring your child?", "type": "text"}, {"label": "What are your main concerns about your child?", "type": "long"}, {"label": "Which areas are most affected day to day?", "type": "text"}, {"label": "How long have you noticed these difficulties?", "type": "text"}, {"label": "Are difficulties getting better, worse, or staying the same?", "type": "text"}, {"label": "What do you hope OT will help your child with?", "type": "long"}, {"label": "What are your child's strengths and things they enjoy?", "type": "long"}]}, {"heading": "🏫 Section 6 — School & Daily Life", "fields": [{"label": "Does your child have an EHCP or SEN Support Plan?", "type": "text"}, {"label": "What support does your child currently receive in school?", "type": "long"}, {"label": "How are they getting on at school generally?", "type": "long"}, {"label": "How are self-care skills at home?", "type": "long"}, {"label": "How is your child's sleep?", "type": "text"}]}, {"heading": "💬 Section 7 — Your Child's Perspective", "fields": [{"label": "Does your child know they are coming for an OT appointment?", "type": "text"}, {"label": "Is your child aware of their own difficulties?", "type": "long"}, {"label": "How does your child feel about coming to OT?", "type": "long"}, {"label": "What motivates your child? What do they love?", "type": "long"}]}, {"heading": "📝 Section 8 — Anything Else", "fields": [{"label": "Is there anything important Nichola should know before the assessment?", "type": "long"}, {"label": "Any questions you'd like to ask Nichola at the appointment?", "type": "long"}]}]}, "consent_adult": {"sections": [{"heading": "👤 Section 1 — Client’s Details", "fields": [{"label": "Client's full name", "type": "text"}, {"label": "Date of birth", "type": "text"}, {"label": "Pronouns", "type": "select"}, {"label": "Client's phone", "type": "text"}, {"label": "Client's email", "type": "text"}, {"label": "GP name & practice", "type": "text"}, {"label": "Home address", "type": "long"}, {"label": "Any known diagnoses or conditions", "type": "text"}]}, {"heading": "🧑‍🤝‍🧑 Section 2 — Who is giving consent?", "fields": [{"label": "This consent is being given by", "type": "select"}, {"label": "Name of the person giving consent", "type": "text"}, {"label": "Relationship to the client / authority to consent", "type": "text"}]}, {"heading": "🔒 Section 3 — Privacy & Data Use", "fields": [{"label": "I understand that Nichola Philbey OT will store personal and health information about the client in a secure, encrypted system for the purpose of providing occupational therapy services.", "type": "check"}, {"label": "I understand that assessment reports will be shared with the client and/or their representative and, with agreement, may be shared with named professionals involved in their care (e.g. GP, consultant, social worker).", "type": "check"}, {"label": "I agree to Nichola sharing a summary with the client’s GP for their medical records. (Optional — can be changed at any time.)", "type": "check"}, {"label": "I agree to anonymised, unidentifiable information being used for professional development, supervision, and service improvement. No identifying details will ever be shared.", "type": "check"}]}, {"heading": "✅ Section 4 — Consent to Assess & Treat", "fields": [{"label": "I consent to Nichola Philbey carrying out an occupational therapy assessment of the client named above, using standardised and observational methods appropriate to their needs.", "type": "check"}, {"label": "I consent to the client receiving occupational therapy treatment as agreed, which may include direct sessions, home or workplace programmes, and equipment advice.", "type": "check"}, {"label": "I consent to Nichola taking brief observational notes during sessions to inform clinical reasoning and report writing.", "type": "check"}, {"label": "I understand the cancellation policy: sessions cancelled with less than 48 hours’ notice may be charged at the full session rate.", "type": "check"}]}, {"heading": "🚨 Section 5 — Safeguarding", "fields": [{"label": "I understand that in exceptional circumstances relating to safeguarding, information may be shared with appropriate agencies in the interests of safety.", "type": "check"}]}, {"heading": "✍️ Section 6 — Signature", "fields": [{"label": "Type the name of the person giving consent", "type": "text"}, {"label": "Date", "type": "text"}, {"label": "Relationship to the client / authority to consent", "type": "text"}]}]}, "questionnaire_adult": {"sections": [{"heading": "👤 Section 1 — About the Client", "fields": [{"label": "Client's full name", "type": "text"}, {"label": "Date of birth", "type": "text"}, {"label": "Pronouns", "type": "select"}, {"label": "Client's phone", "type": "text"}, {"label": "Client's email", "type": "text"}, {"label": "GP name & surgery", "type": "text"}, {"label": "Home address", "type": "text"}]}, {"heading": "✍️ Section 2 — Who is completing this form?", "fields": [{"label": "This form is being completed by", "type": "select"}, {"label": "Name of person completing it (if not the client)", "type": "text"}, {"label": "Relationship to the client", "type": "text"}]}, {"heading": "📋 Section 3 — Reason for Referral", "fields": [{"label": "What are the main difficulties or concerns?", "type": "long"}, {"label": "How long has this been going on?", "type": "text"}, {"label": "What has prompted this referral now?", "type": "text"}, {"label": "Are any other professionals involved?", "type": "text"}]}, {"heading": "🩺 Section 4 — Health & Background", "fields": [{"label": "Any diagnoses or conditions", "type": "text"}, {"label": "Current medication", "type": "text"}, {"label": "Relevant medical history", "type": "long"}, {"label": "Any previous OT or therapy?", "type": "text"}]}, {"heading": "🏠 Section 5 — Daily Life, Support & Activities", "fields": [{"label": "Living situation", "type": "text"}, {"label": "Work / study / daytime activity", "type": "text"}, {"label": "Which everyday activities are difficult?", "type": "long"}, {"label": "Any equipment, adaptations or support already in place?", "type": "long"}]}, {"heading": "🎯 Section 6 — Goals", "fields": [{"label": "What are the main goals for occupational therapy?", "type": "long"}]}, {"heading": "📝 Section 7 — Anything Else", "fields": [{"label": "Anything else Nichola should know?", "type": "long"}]}]}};
 
 var MARIE_TEMPLATE_DEFAULTS = {
   instructionsIntro: `[NAME] was referred to Occupational Therapy by … for a full Occupational Therapy assessment due to:
@@ -1639,10 +1669,11 @@ HOW TO ANSWER:
 
 THE SIDEBAR MENU (on a phone, tap the menu button at the top-left to open it):
 - Home — overview: today's sessions, urgent tasks, a row of quick-stat tiles (Active Clients, Sessions This Week, Reports Pending, Unpaid Invoices), a "Reminders & to-dos" card, and a "Set up your practice" checklist on a fresh build.
-- Clients — the client list, with a Waitlist tab for referrals not yet started. Each client opens a record with its own tabs (see CLIENT RECORD below).
+- Clients — the client list, with a Waitlist tab for referrals not yet started. Each client opens a record with its own tabs (see CLIENT RECORD below). A “📄 Import” button reads an existing report (PDF or photo) with AI and pre-fills a new client record for Nichola to check before saving.
 - Calendar — weekly/monthly view; book sessions. Any session can be added to Google Calendar ("Open in Google Cal", one-way), and all sessions can be exported as an .ics file to import into a calendar app. (Full two-way Google sync needs the app hosted online, not run from a local file.)
 - Sessions — all sessions with filters and session notes. "Log a Session" records a past or unbooked session and opens the note editor straight away.
 - Comms — communication log (calls, emails, letters), per client and across all clients. Overdue follow-ups also surface on Home and in the notifications bell.
+- Intake — a secure online intake inbox. Parents or clients complete the online Consent Form or Questionnaire and submit; their answers are encrypted in their browser so only Nichola can decrypt and read them here, and she can create a client straight from a submission. It is switched on once with “Set up secure intake”. There are two form sets — a child set (Consent + Parent Questionnaire) and an adult set (Consent + Adult Questionnaire) — and from the Intake tab she can pick which set, then “Email both forms to a client” (a pre-filled email with both secure links) or copy the links to share herself. For clients who can’t complete the form online (common with adult clients), she can instead download a blank Word or PDF of either form from the Intake tab and fill it in with them, then upload the completed copy. She can also upload a returned Word/PDF form (from someone who isn’t using the app) and it’s filed to that client’s Documents with their checklist ticked.
 - Documents — document store grouped by client, with a storage meter showing how much of this device's space is used.
 - Finances — opens sub-tabs: Invoices, Mileage, Expenses, Income and Tax (plus an Annual Summary).
 - Focus — a focus/Pomodoro timer with presets (Sprint 10 min, Focus 15, Deep 25, or a custom length), plus a brain-dump box and a Today priority list, with Oaty the cat giving cheeky encouragement to keep going.
@@ -1654,13 +1685,13 @@ THE SIDEBAR MENU (on a phone, tap the menu button at the top-left to open it):
    - Reference (Clinical Reference): score-interpretation tables for MABC-2, BOT-2, VMI, SPM-2 and the DCD DSM-5 criteria, for quick look-up while writing.
    - My Phrases: Nichola's own saved phrases, organised by report section.
    - Builder (Sentence Builder): combine subject/verb/context parts into a clinical sentence, then save it or drop it into a draft.
-- Templates — edit the shared templates: report intros/boilerplate, the Marie template, and the Observation Form structure (its headings, sub-headings and prompts). Editing a template only affects new and in-progress documents; reports and observations already issued keep their original wording.
+- Templates — edit the shared templates: report intros/boilerplate, the Marie template, the Observation Form structure (headings, sub-headings and prompts), and the standard Session Note (its headings, prompts and optional boilerplate that pre-fills every new note), plus editable Email templates (the wording used when drafting the intake-forms email and the invoice email — with [PLACEHOLDER] tokens filled in automatically). Most text fields have a ✨ Refine button that improves them in professional style. Editing a template only affects new and in-progress documents; reports, observations and notes already written keep their original wording.
 - User Guide — an illustrated guide to the whole dashboard.
-- Annie (me) — I am the floating sparkle button at the bottom-right of every screen, not a menu item. Tap it to chat with me. I run on Claude (Haiku) via an Anthropic API key stored locally on this device; that same key powers the "Draft" buttons around the app.
+- Annie (me) — I am the floating sparkle button at the bottom-right of every screen, not a menu item. Tap it to chat with me. I run on Claude via an Anthropic API key stored locally on this device. I chat using a fast model (Haiku); the ✨ Draft and Refine buttons around the app use a stronger model (Sonnet) for higher-quality clinical writing. The one key powers all of it.
 
 CLIENT RECORD TABS (grouped in the record under Overview, Clinical, Progress, Communication and Admin):
 - Overview: summary of the child, plus a "Scores" button that opens a read-only summary of every completed test (each row has an Edit button that jumps to its section in the Assessment tab). There is no separate "Scores" tab.
-- Assessment tab: the single hub for ALL assessment data AND the report's written narratives. It opens on an Introduction section, then flows in report order: Introduction, Background, the test sections, Summary, Outcomes, Provision, Previous Results, Resources Appendix. "Assessments included" pills at the top let Nichola add/remove which tests this child has had (MABC-2, BOT-2, VMI, SPM-2, COPM, Sensory Profile) — several can be active at once. Each test's score grid sits next to its own clinical narrative (scores auto-interpret with colour bands) and shows its pre-written intro inline. Background holds Reason for Referral & Background, Developmental & Medical History and Observations; Summary holds Clinical Interpretation, Functional Impact, Recommendations & Goals (these have a Draft button) and the Summary of OT Needs. The Introduction section holds the opening matter (Author's CV for Marie, Instructions, the Assessment Process), each pre-filled and editable as a per-child override, with a "Save to template" button that promotes an edit to the shared template for all future children. EVERY report field has a "In report / Not needed" toggle to include or exclude it from that child's report. Everything autosaves (a Saving/Saved indicator shows; there are no Save buttons).
+- Assessment tab: the single hub for ALL assessment data AND the report's written narratives. It opens on an Introduction section, then flows in report order: Introduction, Background, the test sections, Summary, Outcomes, Provision, Previous Results, Resources Appendix. "Assessments included" pills at the top let Nichola add/remove which tests this child has had (MABC-2, BOT-2, VMI, SPM-2, COPM, Sensory Profile, 🧸 Observation — pre-filled from the Observation Form template, and a free-form Ad-hoc) — several can be active at once. Each test's score grid sits next to its own clinical narrative (scores auto-interpret with colour bands) and shows its pre-written intro inline. Background holds Reason for Referral & Background, Developmental & Medical History and Observations; Summary holds Clinical Interpretation, Functional Impact, Recommendations & Goals (these have a Draft button) and the Summary of OT Needs. The Introduction section holds the opening matter (Author's CV for Marie, Instructions, the Assessment Process), each pre-filled and editable as a per-child override, with a "Save to template" button that promotes an edit to the shared template for all future children. EVERY report field has a "In report / Not needed" toggle to include or exclude it from that child's report. Everything autosaves (a Saving/Saved indicator shows; there are no Save buttons).
 - Checklist tab: a workflow checklist grouped into phases (Intake, Assessment, Report Writing, etc.) that tracks steps like consent signed, referral received and questionnaire sent.
 - Goals tab: SMART goals with review dates; mark as achieved.
 - Sessions tab: session cards for this child; add/edit session notes; edit a session's date/type/time/duration/location without leaving the record.
@@ -1682,8 +1713,9 @@ REPORTS AND EXPORTS:
 - The Resources Appendix is built per child from the Resource Library (picture cards) and prints with no prices or sales links; an optional free-text box covers bespoke items.
 
 SESSIONS AND NOTES:
-- Book a session in Calendar or Sessions; a session note captures attendance, goals, observations, client response and next steps, with a DNA (Did Not Attend) option and a "Copy previous note" button.
-- A session can use the Observation Form instead of the standard note — choose it when logging/booking, or switch with the Form pills inside the note editor. Its structure is editable under Templates, and observations export to PDF/Word.
+- Book a session in Calendar or Sessions; a session note captures attendance and a set of headings (by default goals, observations, client response and next steps), with a DNA (Did Not Attend) option and a "Copy previous note" button. The headings, their grey prompts and optional pre-filled boilerplate are all editable under Templates → 📝 Session Note (reorder, rename, remove or add your own), and each field has a ✨ Draft button that writes it from the session context.
+- The Observation Form is a client ASSESSMENT (not a session). In a client’s Assessment tab, add the 🧸 Observation pill — it pre-fills its sub-headings from your editable Observation Form template (Templates → 🧸 Observation Form), each with an In-report toggle and 💬 phrases, and it appears in the exported report alongside the other assessments. (It used to be a session-note type; it has been moved to assessments.)
+- Documents can be attached directly to a session — open the note and use “+ Attach file” to keep photos, worksheets or scanned forms with that session; they also appear in the client's Documents tab.
 - After an action, the success message offers the obvious next step as a tappable button ("Write the note" after booking, "Log the journey" after a session note, "Next unpaid" after marking an invoice paid). They're optional.
 - If you start a note or observation and navigate away without saving, the dashboard asks before discarding the changes.
 
@@ -1693,7 +1725,7 @@ INVOICING AND FINANCES:
 - Every financial document exports widely: Invoices, Expenses, Mileage and the Tax estimate each have a CSV button; Expenses and Mileage also have PDF and Word, and the invoice preview has a Word button. Expenses and Mileage have a Period toggle (All time / Month / Tax year / Custom) that scopes the list, totals and downloads.
 
 POWER FEATURES:
-- Global search: Cmd+K or the header search bar.
+- Global search (Cmd/Ctrl+K, or the header search bar): one box that searches across everything — clients, session notes and observations, invoices, journeys/mileage, expenses, goals, reminders, sticky notes, comms, documents, CPD and supervision — with live highlighting and ↑↓/↵ keyboard navigation. Clicking a result jumps straight to it (a client result opens that client's record). It also works as a quick command palette: type a section name (e.g. "tax", "intake", "templates", "mileage") to jump there, and an empty box shows quick-jump shortcuts.
 - Display: dark/soft mode and a greyscale mode (for migraine sensitivity) in the top bar, plus an "Aa" font-size slider.
 - Notifications bell: overdue invoices, EHCP deadlines, follow-ups and reminders due today/overdue.
 - Reminders/to-dos: a manual checklist on Home, each an optional-dated line; due/overdue ones also show in the bell.
@@ -1704,7 +1736,7 @@ ON PHONE AND TABLET:
 - There is a "Use desktop version" control — a monitor icon in the top bar and a "Use desktop version" link at the bottom of the menu drawer — that switches to the full desktop layout exactly as it looks on a PC; a matching control switches back, and the choice is remembered. Desktop computers are unaffected by any of this.
 
 PROFILE & SETTINGS (open it from the name/logo or cog in the header):
-- Eight tabs: Personal; Practice (practice details, letterhead, and the optional getAddress.io postcode-lookup key); Bank Details (bank info plus the configurable Services & prices used on invoices); Tax & Registration; Security; Windows Hello; OneDrive; and Cloud Sync.
+- Eight tabs: Personal; Practice (practice details and letterhead); Bank Details (bank info plus the configurable Services & prices used on invoices); Tax & Registration; Security; Windows Hello; OneDrive; and Cloud Sync.
 - Security & sign-in: unlock by master password, or set up Windows Hello (fingerprint/face/PIN) or Microsoft 365 sign-in for passwordless unlock; change the master password; and generate a recovery key — do this BEFORE turning on cloud sync, because without it a forgotten password can't be recovered.
 
 DATA, BACKUP AND SECURITY:
@@ -1715,7 +1747,7 @@ DATA, BACKUP AND SECURITY:
 
 ADDING A CLIENT:
 - Assessments are chosen with multi-select pills (MABC-2, BOT-2, VMI, SPM-2, COPM, Sensory Profile) plus a "Use Marie report format" checkbox. A pre-assessed (treatment-only) referral can be flagged and assessed later.
-- Address fields have an optional UK postcode lookup (type a postcode, click Find, pick the address) which needs a free getAddress.io API key in Profile & Settings, Practice; without one, just type the address.
+- Address fields have a free UK postcode lookup (postcodes.io — no key): type a postcode and it fills in the town and county; you add the house number and street yourself.
 
 TEST vs LIVE BUILD:
 - A TEST build shows an orange banner and can load or reload a 12-client demo dataset so features can be tried safely — that is sample data, not Nichola's real records. The LIVE build holds her real, private caseload; encourage her to experiment in the TEST build, not the live one.
@@ -5023,10 +5055,18 @@ if (!window.claude) {
       if (!key) throw new Error('NO_API_KEY');
       const _model = (opts && opts.model) || 'claude-haiku-4-5-20251001';
       const _maxTokens = (opts && opts.maxTokens) || 1024;
+      const _files = (opts && opts.files) || null;
+      let _content;
+      if (_files && _files.length) {
+        _content = _files.map(f => f.media_type === 'application/pdf'
+          ? ({ type:'document', source:{ type:'base64', media_type:'application/pdf', data:f.data } })
+          : ({ type:'image', source:{ type:'base64', media_type:f.media_type, data:f.data } }));
+        _content.push({ type:'text', text:String(prompt||'') });
+      } else { _content = String(prompt||''); }
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method:'POST',
         headers:{ 'Content-Type':'application/json', 'x-api-key':key, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
-        body: JSON.stringify({ model:_model, max_tokens:_maxTokens, messages:[{ role:'user', content:String(prompt||'') }] }),
+        body: JSON.stringify({ model:_model, max_tokens:_maxTokens, messages:[{ role:'user', content:_content }] }),
       });
       if (!res.ok) throw new Error('API_' + res.status);
       const j = await res.json();
@@ -5218,6 +5258,40 @@ async function _decryptString(envelopeStr, cryptoKey) {
   const pt = await crypto.subtle.decrypt({ name:'AES-GCM', iv }, cryptoKey, ct);
   return new TextDecoder().decode(pt);
 }
+
+// ── Document cloud storage (Supabase Storage bucket "npot-docs") ─────────────
+// Files are AES-encrypted with the master key BEFORE upload, so the bucket only
+// ever holds ciphertext. Falls back to inline base64 when cloud isn't available.
+if (typeof window !== 'undefined') window.__docCache = window.__docCache || {};
+function _docSb(){ const c = (typeof window!=='undefined') ? window.__SBDOC : null; return (c && c.url && c.key) ? { url:String(c.url).replace(/\/+$/,''), key:c.key } : null; }
+function _docStorageHeaders(key, extra){ return Object.assign({ apikey:key, Authorization:'Bearer '+key }, extra||{}); }
+async function uploadDocToCloud(doc, base64){
+  const sb=_docSb(); const ck=_getCurrentKey();
+  if(!sb||!ck||!base64) return null;
+  try {
+    const envelope = await _encryptString(base64, ck);
+    const path = 'npot-docs/' + (doc.clientId||'general') + '/' + doc.id + '.enc';
+    const r = await fetch(sb.url + '/storage/v1/object/' + path, { method:'POST', headers:_docStorageHeaders(sb.key, { 'Content-Type':'text/plain', 'x-upsert':'true' }), body: envelope });
+    return r.ok ? path : null;
+  } catch(e){ return null; }
+}
+async function fetchDocFromCloud(doc){
+  if(window.__docCache[doc.id]) return window.__docCache[doc.id];
+  const sb=_docSb(); const ck=_getCurrentKey();
+  if(!sb||!ck||!doc.storagePath) return null;
+  try {
+    const r = await fetch(sb.url + '/storage/v1/object/' + doc.storagePath, { headers:_docStorageHeaders(sb.key) });
+    if(!r.ok) return null;
+    const base64 = await _decryptString(await r.text(), ck);
+    window.__docCache[doc.id]=base64; return base64;
+  } catch(e){ return null; }
+}
+async function deleteDocFromCloud(doc){
+  const sb=_docSb(); if(!sb||!doc.storagePath) return;
+  try { await fetch(sb.url + '/storage/v1/object/' + doc.storagePath, { method:'DELETE', headers:_docStorageHeaders(sb.key) }); } catch(e){}
+  try { delete window.__docCache[doc.id]; } catch(e){}
+}
+async function getDocBytes(doc){ if(!doc) return null; if(doc.base64) return doc.base64; if(doc.storagePath) return await fetchDocFromCloud(doc); return null; }
 
 function _readMeta() {
   try {
@@ -5468,6 +5542,19 @@ var _odTokenExpiry = 0;
 const OD_ROOT = 'NicholaOT';
 const OD_SCHEMA_VERSION = 1;
 
+async function msAcquireToken(scopes) {
+  if (!isMSConfigured() || !canUseModernAuth()) throw new Error('Microsoft 365 is not connected');
+  const cfg = getMSConfig();
+  const msalCfg = { auth: { clientId: cfg.clientId, authority: cfg.tenantId ? 'https://login.microsoftonline.com/' + cfg.tenantId : 'https://login.microsoftonline.com/common', redirectUri: window.location.href.split('#')[0] }, cache: { cacheLocation:'localStorage', storeAuthStateInCookie:false } };
+  const app = new msal.PublicClientApplication(msalCfg);
+  await app.initialize();
+  const accounts = app.getAllAccounts();
+  let result;
+  if (accounts.length) { try { result = await app.acquireTokenSilent({ scopes, account: accounts[0] }); } catch(e) { result = await app.loginPopup({ scopes }); } }
+  else { result = await app.loginPopup({ scopes }); }
+  return result.accessToken;
+}
+
 async function odGetToken() {
   if (_odToken && Date.now() < _odTokenExpiry) return _odToken;
   if (!isMSConfigured() || !canUseModernAuth()) return null;
@@ -5616,6 +5703,18 @@ function _sbDecryptPayload(payload, allowPrompt) {
   })();
 }
 
+async function _intakeGenKeypair() {
+  const kp = await crypto.subtle.generateKey({ name:'RSA-OAEP', modulusLength:2048, publicExponent:new Uint8Array([1,0,1]), hash:'SHA-256' }, true, ['encrypt','decrypt']);
+  return { pub: await crypto.subtle.exportKey('jwk', kp.publicKey), priv: await crypto.subtle.exportKey('jwk', kp.privateKey) };
+}
+async function _intakeDecryptSubmission(privJwk, env) {
+  const privKey = await crypto.subtle.importKey('jwk', privJwk, { name:'RSA-OAEP', hash:'SHA-256' }, false, ['decrypt']);
+  const rawAes = await crypto.subtle.decrypt({ name:'RSA-OAEP' }, privKey, _b64dec(env.wk));
+  const aesKey = await crypto.subtle.importKey('raw', rawAes, { name:'AES-GCM' }, false, ['decrypt']);
+  const pt = await crypto.subtle.decrypt({ name:'AES-GCM', iv:_b64dec(env.iv) }, aesKey, _b64dec(env.ct));
+  return new TextDecoder().decode(pt);
+}
+
 function _sbMaybeVersion(url, key, payloadObj) {
   try {
     const last = parseInt(localStorage.getItem('ot-sb-last-version') || '0', 10);
@@ -5637,6 +5736,22 @@ function _sbMaybeVersion(url, key, payloadObj) {
   } catch(e){}
 }
 
+// Publish PUBLIC-SAFE practice details (name, HCPC, email — never phone) to a public Supabase row
+// so the standalone intake forms can show current details. Only pushes when something changed.
+function _publishPracticeInfo(url, key, plain) {
+  try {
+    const o = getOwnerInfo(JSON.parse(plain));
+    const info = { practiceName:o.practiceName, fullName:o.fullName, hcpcLabel:o.hcpcLabel, email:o.email };
+    const hash = JSON.stringify(info);
+    if (localStorage.getItem('ot-practice-info-pub') === hash) return;
+    fetch(`${url}/rest/v1/practice_info`, {
+      method:'POST',
+      headers:_sbHeaders(key, { 'Content-Type':'application/json', Prefer:'resolution=merge-duplicates' }),
+      body: JSON.stringify({ id:'main', info:info }),
+    }).then(r => { if (r.ok) localStorage.setItem('ot-practice-info-pub', hash); }).catch(()=>{});
+  } catch(e){}
+}
+
 function _sbDoPush(plain, cryptoKey, url, key) {
   return _encryptString(plain, cryptoKey).then(envelope => {
     const _payload = { enc:1, salt:(_readMeta()||{}).salt, d:envelope };
@@ -5645,7 +5760,7 @@ function _sbDoPush(plain, cryptoKey, url, key) {
       headers: _sbHeaders(key, { 'Content-Type':'application/json', Prefer:'resolution=merge-duplicates' }),
       body: JSON.stringify({ id:'main', payload:_payload, updated_at:new Date().toISOString() }),
     }).then(r => {
-      if (r.ok) { localStorage.setItem('ot-sb-last-sync', new Date().toISOString()); localStorage.setItem('ot-sb-fail','0'); _sbMaybeVersion(url, key, _payload); }
+      if (r.ok) { localStorage.setItem('ot-sb-last-sync', new Date().toISOString()); localStorage.setItem('ot-sb-fail','0'); _sbMaybeVersion(url, key, _payload); try { _publishPracticeInfo(url, key, plain); } catch(e){} }
       else { localStorage.setItem('ot-sb-fail', String((parseInt(localStorage.getItem('ot-sb-fail')||'0',10))+1)); console.warn('[Supabase] sync HTTP', r.status); }
     }).catch(e => { localStorage.setItem('ot-sb-fail', String((parseInt(localStorage.getItem('ot-sb-fail')||'0',10))+1)); console.warn('[Supabase] sync failed:', e); });
   }).catch(e => console.warn('[Supabase] encrypt failed:', e));
@@ -6364,7 +6479,7 @@ const BookSessionInline = ({ client, updateData, addToast, onOpenNote }) => {
           <Field label="Notes (optional)"><ExpandableTextarea rows={3} value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} placeholder="Anything to remember for this session…"/></Field>
           <Field label="Write-up form">
             <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-              {[['standard','📝 Session note'],['eyo','🧸 Observation Form']].map(([v,lbl]) => (
+              {[['standard','📝 Session note']].map(([v,lbl]) => (
                 <button key={v} type="button" onClick={()=>setForm(f=>({...f,formType:v}))}
                   style={{ padding:'6px 14px', borderRadius:20, border:`1px solid ${(form.formType||'standard')===v?T.sage:T.sandBorder}`, background:(form.formType||'standard')===v?T.sageLight:T.card, color:(form.formType||'standard')===v?T.sageText:T.inkMid, fontSize:12, fontWeight:(form.formType||'standard')===v?700:400, cursor:'pointer' }}>{lbl}</button>
               ))}
@@ -6701,7 +6816,7 @@ function DailyFocusOverlay({ sessions, clients, sessionNotes, todayStr, now, act
   );
 }
 
-function HomeDashboard({ data, updateData, setView, setClientsNav, setSelectedClient, openSettings }) {
+function HomeDashboard({ data, updateData, setView, setClientsNav, setSelectedClient, openSettings, addToast }) {
   const { clients, sessions, invoices, mileage, cpd, supervision } = data;
   const now = new Date();
   const todayStr = today();
@@ -7364,7 +7479,7 @@ function HomeDashboard({ data, updateData, setView, setClientsNav, setSelectedCl
                 return (
                   <div key={a.id}
                     onClick={() => { if (a.action && !isDone) a.action(); }}
-                    style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 18px', background:T.card, border:`1px solid ${T.sandBorder}`, borderLeft:`3px solid ${isDone ? T.sandBorder : priorityBar[a.priority]}`, borderRadius:10, transition:'all 0.2s', opacity: isDone ? 0.55 : 1, cursor: a.action && !isDone ? 'pointer' : 'default' }}>
+                    style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 18px', background:T.card, borderTop:`1px solid ${T.sandBorder}`, borderRight:`1px solid ${T.sandBorder}`, borderBottom:`1px solid ${T.sandBorder}`, borderLeft:`3px solid ${isDone ? T.sandBorder : priorityBar[a.priority]}`, borderRadius:10, transition:'all 0.2s', opacity: isDone ? 0.55 : 1, cursor: a.action && !isDone ? 'pointer' : 'default' }}>
 
                     {/* Checkbox */}
                     <button onClick={e => { e.stopPropagation(); toggleDone(a.id); }}
@@ -7427,7 +7542,7 @@ function HomeDashboard({ data, updateData, setView, setClientsNav, setSelectedCl
           return <span style={{ fontSize:11, fontWeight:600, color:c.fg, background:c.bg, padding:'1px 8px', borderRadius:10, whiteSpace:'nowrap' }}>{overdue ? 'Overdue · ' : isToday ? 'Today · ' : ''}{label}</span>;
         };
         return (
-          <div style={{ background:T.card, border:`1px solid ${T.sandBorder}`, borderLeft:`4px solid ${T.amber}`, borderRadius:12, padding:'16px 20px', marginBottom:20 }}>
+          <div style={{ background:T.card, borderTop:`1px solid ${T.sandBorder}`, borderRight:`1px solid ${T.sandBorder}`, borderBottom:`1px solid ${T.sandBorder}`, borderLeft:`4px solid ${T.amber}`, borderRadius:12, padding:'16px 20px', marginBottom:20 }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
               <span style={{ fontSize:14, fontWeight:700, color:T.ink }}>📝 Reminders &amp; to-dos</span>
               {open.length > 0 && <span style={{ fontSize:12, color:T.inkLight }}>{open.length} open</span>}
@@ -7521,7 +7636,7 @@ function HomeDashboard({ data, updateData, setView, setClientsNav, setSelectedCl
 
       {/* ── TODAY'S SESSIONS ──────────────────────────────────────────── */}
       {todaySessions.length > 0 && (
-        <div style={{ background:T.card, border:`1px solid ${T.sandBorder}`, borderLeft:`4px solid ${T.sage}`, borderRadius:12, padding:'16px 20px', marginBottom:20 }}>
+        <div style={{ background:T.card, borderTop:`1px solid ${T.sandBorder}`, borderRight:`1px solid ${T.sandBorder}`, borderBottom:`1px solid ${T.sandBorder}`, borderLeft:`4px solid ${T.sage}`, borderRadius:12, padding:'16px 20px', marginBottom:20 }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
             <span style={{ fontSize:14, fontWeight:700, color:T.ink }}>Today — {now.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</span>
             <span style={{ fontSize:12, color:T.inkLight }}>{todaySessions.length} session{todaySessions.length!==1?'s':''} scheduled</span>
@@ -7695,53 +7810,118 @@ function HomeDashboard({ data, updateData, setView, setClientsNav, setSelectedCl
   );
 }
 
-// ── UK postcode → address lookup (getAddress.io free tier) ──────────────────
-function PostcodeLookup({ apiKey, onPick }) {
+// ── UK postcode → town/county lookup (postcodes.io — free, open data, no key) ─
+function PostcodeLookup({ onPick }) {
   const [pc, setPc] = useState('');
-  const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
   const search = async () => {
     const code = pc.trim();
     if(!code) return;
-    if(!apiKey){ setErr('Add your getAddress.io key in Settings → Practice first.'); return; }
-    setLoading(true); setErr(''); setResults(null);
+    setLoading(true); setErr('');
     try {
-      const r = await fetch(`https://api.getAddress.io/find/${encodeURIComponent(code)}?api-key=${encodeURIComponent(apiKey)}&expand=true`);
+      const r = await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(code.replace(/\s+/g,''))}`);
       if(!r.ok){
-        setErr(r.status===404 ? 'No addresses found for that postcode.'
-             : r.status===401 ? 'Invalid API key — check Settings → Practice.'
-             : r.status===429 ? "Daily lookup limit reached — resets tomorrow."
-             : 'Lookup failed ('+r.status+'). You can type the address manually.');
+        setErr(r.status===404 ? 'Postcode not found — check it, or type the address manually.' : 'Lookup failed ('+r.status+'). Type the address manually.');
         setLoading(false); return;
       }
       const d = await r.json();
-      const list = (d.addresses||[]).map(a => {
-        const parts = Array.isArray(a.formatted_address) ? a.formatted_address : [a.line_1,a.line_2,a.line_3,a.town_or_city,a.county];
-        const line = parts.filter(Boolean).join(', ');
-        return { line, full: [line, code.toUpperCase()].filter(Boolean).join(', ') };
-      });
-      if(!list.length) setErr('No addresses found for that postcode.');
-      setResults(list);
+      const a = d && d.result;
+      if(!a){ setErr('Postcode not found.'); setLoading(false); return; }
+      const tail = [a.admin_ward, a.admin_district, (a.admin_county || a.region), a.postcode].filter(Boolean).filter((v,i,arr)=>arr.indexOf(v)===i).join(', ');
+      onPick(tail); setPc('');
     } catch(e){
-      setErr('Could not reach the address service (network/CORS). Type the address manually.');
+      setErr('Could not reach the postcode service (network). Type the address manually.');
     }
     setLoading(false);
   };
   return (
     <div style={{ marginBottom:6 }}>
       <div style={{ display:'flex', gap:6, alignItems:'center' }}>
-        <Input value={pc} onChange={e=>setPc(e.target.value)} onKeyDown={e=>{ if(e.key==='Enter'){ e.preventDefault(); search(); } }} placeholder="Find by postcode…" style={{ flex:1 }}/>
+        <Input value={pc} onChange={e=>setPc(e.target.value)} onKeyDown={e=>{ if(e.key==='Enter'){ e.preventDefault(); search(); } }} placeholder="Postcode → fills town & county…" style={{ flex:1 }}/>
         <Btn small variant='secondary' onClick={search} disabled={loading}>{loading?'…':'🔍 Find'}</Btn>
       </div>
-      {results && results.length>0 && (
-        <Select value="" onChange={e=>{ const i=parseInt(e.target.value); if(!isNaN(i)){ onPick(results[i].full); setResults(null); setPc(''); } }} style={{ marginTop:6 }}>
-          <option value="">Select address — {results.length} found…</option>
-          {results.map((a,i)=><option key={i} value={i}>{a.line}</option>)}
-        </Select>
-      )}
       {err && <div style={{ marginTop:5, fontSize:12, color:T.amber }}>{err}</div>}
+      <div style={{ fontSize:10.5, color:T.inkLight, marginTop:3 }}>Free postcode lookup (postcodes.io) — fills the town &amp; county. Add the house number &amp; street yourself.</div>
     </div>
+  );
+}
+
+function ImportClientModal({ onSave, onClose }) {
+  const [busy, setBusy] = React.useState(false);
+  const [err, setErr] = React.useState('');
+  const [fields, setFields] = React.useState(null);
+  const set = (k, v) => setFields(f => ({ ...f, [k]: v }));
+  const handleFile = async (file) => {
+    if (!file) return;
+    setErr(''); setBusy(true); setFields(null);
+    try {
+      const dataUrl = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(new Error('read failed')); r.readAsDataURL(file); });
+      const b64 = String(dataUrl).split(',')[1] || '';
+      const mt = file.type || (/\.pdf$/i.test(file.name) ? 'application/pdf' : 'application/octet-stream');
+      const prompt = 'You are helping a UK occupational therapist import an existing assessment or report. Read the attached document and extract the key details. Return ONLY a JSON object (no other text, no markdown fences) with these keys, using an empty string when a value is not found:\n{"name":"the child or client full name","dob":"date of birth as YYYY-MM-DD if determinable else empty","school":"school or setting name","diagnosis":"any stated diagnosis","referralSource":"who referred or who wrote the report","pronouns":"one of: he/him, she/her, they/them","summary":"a concise professional third-person summary of the key history, findings, scores and recommendations, suitable to paste as background notes"}';
+      const text = await window.claude.complete(prompt, { model:'claude-sonnet-4-6', maxTokens:2000, files:[{ media_type: mt, data: b64 }] });
+      const clean = String(text).replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(clean);
+      setFields({ name:parsed.name||'', dob:parsed.dob||'', school:parsed.school||'', diagnosis:parsed.diagnosis||'', referralSource:parsed.referralSource||'', pronouns:parsed.pronouns||'he/him', summary:parsed.summary||'' });
+    } catch(e) {
+      setErr(e.message==='NO_API_KEY' ? 'Add your Anthropic AI key in the Annie tab first to use document import.' : ('Could not read that document: ' + e.message));
+    }
+    setBusy(false);
+  };
+  const create = () => {
+    if (!fields || !fields.name.trim()) { setErr('A name is required.'); return; }
+    onSave({
+      name: fields.name.trim(), dob: fields.dob||'', school: fields.school||'', schoolAddress:'', homeAddress:'',
+      pronouns: fields.pronouns||'he/him', diagnosis: fields.diagnosis||'', referralSource: fields.referralSource||'',
+      referralDate: today(), status:'Active', preAssessed:true, reportStatus:'Not started', notes: fields.summary||'',
+      assessmentType:'Other', activeAssessments:[],
+      id: uid(), createdAt: isoNow(), updatedAt: isoNow(), checklistItems:{}
+    });
+  };
+  const row = (label, key, type) => (
+    <div style={{ marginBottom:10 }}>
+      <div style={{ fontSize:11, fontWeight:700, color:T.inkMid, marginBottom:3 }}>{label}</div>
+      <Input value={fields[key]} onChange={e=>set(key, e.target.value)} type={type||'text'}/>
+    </div>
+  );
+  return (
+    <Modal title="Import a client from a document" onClose={onClose}>
+      <div style={{ fontSize:13, color:T.inkMid, lineHeight:1.6, marginBottom:14 }}>
+        Upload an existing report (PDF, or a photo/scan). The AI reads it and fills the details below — <strong>you review and edit before anything is saved.</strong> Nothing is created until you click Create.
+      </div>
+      {!fields && (
+        <label style={{ display:'block', border:`2px dashed ${T.sage}`, borderRadius:10, padding:'24px', textAlign:'center', cursor:'pointer', color:T.sage, fontWeight:600 }}>
+          {busy ? 'Reading the document\u2026' : '\uD83D\uDCC4 Choose a PDF or image to import'}
+          <input type="file" accept="application/pdf,image/*" style={{ display:'none' }} disabled={busy} onChange={e=>handleFile(e.target.files && e.target.files[0])}/>
+        </label>
+      )}
+      {err && <div style={{ marginTop:12, padding:'10px 14px', background:T.redLight, color:T.red, borderRadius:8, fontSize:12, fontWeight:600 }}>{err}</div>}
+      {fields && (
+        <div>
+          <div style={{ padding:'8px 12px', background:T.amberLight, color:T.amber, borderRadius:8, fontSize:12, marginBottom:14, fontWeight:600 }}>\u26A0 AI-extracted — please check every field before creating.</div>
+          {row('Full name *','name')}
+          {row('Date of birth','dob','date')}
+          {row('School / setting','school')}
+          {row('Diagnosis','diagnosis')}
+          {row('Referral source','referralSource')}
+          <div style={{ marginBottom:10 }}>
+            <div style={{ fontSize:11, fontWeight:700, color:T.inkMid, marginBottom:3 }}>Pronouns</div>
+            <Select value={fields.pronouns} onChange={e=>set('pronouns', e.target.value)}>
+              <option value="he/him">he/him</option><option value="she/her">she/her</option><option value="they/them">they/them</option>
+            </Select>
+          </div>
+          <div style={{ marginBottom:10 }}>
+            <div style={{ fontSize:11, fontWeight:700, color:T.inkMid, marginBottom:3 }}>Background summary (saved to the client's notes)</div>
+            <ExpandableTextarea rows={8} value={fields.summary} onChange={e=>set('summary', e.target.value)}/>
+          </div>
+          <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:8 }}>
+            <Btn variant='secondary' small onClick={()=>{ setFields(null); setErr(''); }}>Start over</Btn>
+            <Btn variant='primary' small onClick={create}>Create client</Btn>
+          </div>
+        </div>
+      )}
+    </Modal>
   );
 }
 
@@ -7755,8 +7935,8 @@ function AddClientModal({ onSave, onClose, apiKey }) {
         <Field label="Date of Birth"><Input type="date" max={today()} value={form.dob} onChange={e=>set('dob',e.target.value)}/></Field>
         <Field label="Pronouns"><Select value={form.pronouns} onChange={e=>set('pronouns',e.target.value)}><option>he/him</option><option>she/her</option><option>they/them</option></Select></Field>
         <Field label="School / Setting"><Input value={form.school} onChange={e=>set('school',e.target.value)}/></Field>
-        <Field label="School Address">{apiKey ? <PostcodeLookup apiKey={apiKey} onPick={a=>set('schoolAddress',a)}/> : null}<Input value={form.schoolAddress} onChange={e=>set('schoolAddress',e.target.value)} placeholder="School address"/></Field>
-        <div style={{ gridColumn:'1/-1' }}><Field label="Home Address">{apiKey ? <PostcodeLookup apiKey={apiKey} onPick={a=>set('homeAddress',a)}/> : null}<Input value={form.homeAddress} onChange={e=>set('homeAddress',e.target.value)} placeholder="Child's home address"/></Field></div>
+        <Field label="School Address"><PostcodeLookup onPick={a=>set('schoolAddress', (form.schoolAddress ? form.schoolAddress.replace(/,?\s*$/,'')+', ' : '') + a)}/><Input value={form.schoolAddress} onChange={e=>set('schoolAddress',e.target.value)} placeholder="School address"/></Field>
+        <div style={{ gridColumn:'1/-1' }}><Field label="Home Address"><PostcodeLookup onPick={a=>set('homeAddress', (form.homeAddress ? form.homeAddress.replace(/,?\s*$/,'')+', ' : '') + a)}/><Input value={form.homeAddress} onChange={e=>set('homeAddress',e.target.value)} placeholder="Child's home address"/></Field></div>
         <div style={{ gridColumn:'1/-1' }}><Field label="Diagnosis / Presenting Difficulties"><Input value={form.diagnosis} onChange={e=>set('diagnosis',e.target.value)} placeholder="e.g. DCD, Autism, ADHD — referral reason"/></Field></div>
         <Field label="Status"><Select value={form.status} onChange={e=>set('status',e.target.value)}>{STATUSES.filter(s=>s!=='Discharged').map(s=><option key={s}>{s}</option>)}</Select></Field>
         <Field label="Referral Source"><Input value={form.referralSource} onChange={e=>set('referralSource',e.target.value)}/></Field>
@@ -7765,7 +7945,7 @@ function AddClientModal({ onSave, onClose, apiKey }) {
           <Field label={form.preAssessed ? "Assessments" : "Assessments — select all that apply"}>
             {!form.preAssessed && (
             <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginTop:2 }}>
-              {['MABC-2','BOT-2','VMI','SPM-2','COPM','Sensory Profile','Ad-hoc'].map(t => {
+              {['MABC-2','BOT-2','VMI','SPM-2','COPM','Sensory Profile','Observation','Ad-hoc'].map(t => {
                 const on = form.assessments.includes(t);
                 return <Pill key={t} active={on} onClick={()=>set('assessments', on ? form.assessments.filter(x=>x!==t) : [...form.assessments, t])} title={t==='Ad-hoc' ? 'A free-form, narrative-only assessment (you set the title + subheadings later)' : (on ? 'Click to remove' : 'Click to add')}>{t==='Ad-hoc' && <span style={{ fontSize:11 }}>✏️</span>}<span style={{ fontSize:11 }}>{on?'✓':'＋'}</span>{t}</Pill>;
               })}
@@ -8139,6 +8319,7 @@ function AssessmentTab({ client, data, updateClient, updateData, addToast, gotoS
   // What this client actually has data for (used to seed the list for legacy/demo clients
   // that predate the pill selector).
   const _hasAdhoc = !!((aData.adhocTitle||'').trim() || (aData.adhocSections||[]).some(s => (s.heading||'').trim() || (s.text||'').trim()));
+  const _hasObservation = (aData.observationSections||[]).some(s => (s.heading||'').trim() || (s.text||'').trim());
   const _detected = [
     (dataMABC || client.assessmentType==='MABC-2') && 'MABC-2',
     (dataBOT  || client.assessmentType==='BOT-2')  && 'BOT-2',
@@ -8147,6 +8328,7 @@ function AssessmentTab({ client, data, updateClient, updateData, addToast, gotoS
     (_hasCOPM || client.assessmentType==='COPM') && 'COPM',
     (_hasSensory || client.assessmentType==='Sensory Profile') && 'Sensory Profile',
     _hasAdhoc && 'Ad-hoc',
+    _hasObservation && 'Observation',
   ].filter(Boolean);
   // Effective active set: the explicit list if the client has one, else the detected set.
   const _active = Array.isArray(client.activeAssessments) ? client.activeAssessments : _detected;
@@ -8157,13 +8339,23 @@ function AssessmentTab({ client, data, updateClient, updateData, addToast, gotoS
   const showCOPM = _active.includes('COPM');
   const showSensory = _active.includes('Sensory Profile');
   const showAdhoc = _active.includes('Ad-hoc');
+  const showObservation = _active.includes('Observation');
   const _activeFlags = { 'MABC-2':showMABC, 'BOT-2':showBOT, 'VMI':showVMI, 'SPM-2':showSPM, 'COPM':showCOPM, 'Sensory Profile':showSensory };
   const _hasDataFor = { 'MABC-2':dataMABC, 'BOT-2':dataBOT, 'VMI':dataVMI, 'SPM-2':dataSPM, 'COPM':_hasCOPM, 'Sensory Profile':_hasSensory };
   const toggleAssessment = (t) => {
     // Seed from the effective set so toggling one pill never drops the others.
     const set = new Set(_active);
+    const adding = !set.has(t);
     set.has(t) ? set.delete(t) : set.add(t);
-    updateClient({ ...client, assessment: aData, scores: aScores, reportSections: aReport, fieldStatus: aFieldStatus, activeAssessments: [...set] });
+    let nextA = aData;
+    if (t==='Observation' && adding && !(aData.observationSections||[]).length) {
+      const _tpl = (typeof getEyoTemplate!=='undefined') ? getEyoTemplate(data.settings) : null;
+      const _secs = [];
+      if (_tpl && _tpl.sections) _tpl.sections.forEach(function(sc){ (sc.subs||[]).forEach(function(su){ _secs.push({ id: uid(), heading: sc.heading + ' \u2014 ' + su.label, text:'' }); }); });
+      nextA = { ...aData, observationSections: _secs };
+      setAData(nextA);
+    }
+    updateClient({ ...client, assessment: nextA, scores: aScores, reportSections: aReport, fieldStatus: aFieldStatus, activeAssessments: [...set] });
   };
   // Author bio (CV default) + the shared editable-field renderer used by the
   // Introduction section (standard) and the CV row of the Marie section.
@@ -8206,6 +8398,7 @@ function AssessmentTab({ client, data, updateClient, updateData, addToast, gotoS
     ...(showCOPM ? [{ key:'copm', label:'COPM' }] : []),
     ...(showSensory ? [{ key:'sensory', label:'Sensory Profile' }] : []),
     ...(showAdhoc ? [{ key:'adhoc', label:'✏️ '+(((aData.adhocTitle||'').trim()) || 'Ad-hoc') }] : []),
+    ...(showObservation ? [{ key:'observation', label:'🧸 Observation' }] : []),
     { key:'finemotor', label:'Fine Motor' },
     { key:'adl', label:'Daily Living' },
     { key:'summary', label:'Summary' },
@@ -8295,6 +8488,10 @@ function AssessmentTab({ client, data, updateClient, updateData, addToast, gotoS
           <Pill key="Ad-hoc" active={showAdhoc} onClick={()=>toggleAssessment('Ad-hoc')}
             title={showAdhoc ? 'Click to remove — your ad-hoc text is kept and returns if you add it again' : 'A free-form, narrative-only assessment with your own title and subheadings (standard or Marie)'}>
             <span style={{ fontSize:11 }}>{showAdhoc ? '✓' : '＋'}</span>✏️ Ad-hoc
+          </Pill>
+          <Pill key="Observation" active={showObservation} onClick={()=>toggleAssessment('Observation')}
+            title={showObservation ? 'Click to remove — your observation text is kept and returns if you add it again' : 'A structured observation assessment, pre-filled from your Observation Form template (editable under Templates → Observation Form)'}>
+            <span style={{ fontSize:11 }}>{showObservation ? '✓' : '＋'}</span>🧸 Observation
           </Pill>
         </div>
       </div>
@@ -8394,6 +8591,47 @@ function AssessmentTab({ client, data, updateClient, updateData, addToast, gotoS
           </div>
           <button onClick={()=>setAData(d=>({...d,adhocSections:[...(d.adhocSections||[]),{id:(typeof uid!=='undefined'?uid():String(Date.now())),heading:'',text:''}]}))}
             style={{ marginTop:10, background:T.sageLight, border:`1px solid ${T.sage}`, color:T.sageText, borderRadius:8, padding:'7px 14px', fontSize:12, fontWeight:600, cursor:'pointer' }}>＋ Add subheading</button>
+        </div>
+      )}
+
+      {section==='observation' && (
+        <div>
+          <div style={S.h3}>🧸 Observation</div>
+          <div style={S.labelMd}>A structured observation assessment, pre-filled from your Observation Form template (edit the master under <strong>Templates → 🧸 Observation Form</strong>). Each subheading has its own <strong>In report</strong> toggle and 💬 phrase access. Works in both standard and Marie reports.</div>
+          <div style={{ marginBottom:12 }}>
+            <div style={S.labelSm}>Title (optional — defaults to "Observation")</div>
+            <input value={aData.observationTitle||''} onChange={e=>setAData(d=>({...d,observationTitle:e.target.value}))} placeholder="Observation"
+              style={{ width:'100%', border:`1px solid ${T.sandBorder}`, borderRadius:8, padding:'8px 12px', fontSize:14, fontWeight:600, fontFamily:'inherit', outline:'none', color:T.ink, boxSizing:'border-box' }}/>
+          </div>
+          <div style={S.col10}>
+            {(aData.observationSections||[]).map((sec) => {
+              const k = 'observation_'+sec.id;
+              const incOn = fieldIncluded(k);
+              return (
+                <div key={sec.id} style={{ background:T.card, border:`1px solid ${incOn?T.sandBorder:T.sand}`, borderRadius:10, padding:'12px 16px', opacity:incOn?1:0.6 }}>
+                  <div style={{...S.row8, justifyContent:'space-between', marginBottom:6}}>
+                    <input value={sec.heading||''} onChange={e=>setAData(d=>({...d,observationSections:(d.observationSections||[]).map(s=>s.id===sec.id?{...s,heading:e.target.value}:s)}))} placeholder="Subheading"
+                      style={{ flex:1, marginRight:8, border:`1px solid ${T.sandBorder}`, borderRadius:8, padding:'6px 10px', fontSize:13, fontWeight:600, fontFamily:'inherit', outline:'none', color:T.ink, minWidth:0 }}/>
+                    <div style={{ display:'flex', gap:6, alignItems:'center', flexShrink:0 }}>
+                      {fieldToggle(k)}
+                      <button onClick={()=>openPhrases(k, sec.heading||'Observation')} style={{ background:'none', border:`1px solid ${T.sandBorder}`, borderRadius:6, padding:'3px 8px', fontSize:11, cursor:'pointer', color:T.sage, fontWeight:600, whiteSpace:'nowrap' }}>💬 Phrases</button>
+                      <button onClick={()=>setAData(d=>({...d,observationSections:(d.observationSections||[]).filter(s=>s.id!==sec.id)}))} title="Remove this subheading" style={{ background:'none', border:'none', color:T.inkLight, fontSize:18, cursor:'pointer', lineHeight:1, padding:'0 2px' }}>×</button>
+                    </div>
+                  </div>
+                  <ExpandableTextarea value={sec.text||''} onChange={e=>setAData(d=>({...d,observationSections:(d.observationSections||[]).map(s=>s.id===sec.id?{...s,text:e.target.value}:s)}))}
+                    label={sec.heading||'Section'} rows={3}
+                    style={{ minHeight:80, fontSize:12, lineHeight:1.6 }}/>
+                </div>
+              );
+            })}
+            {(aData.observationSections||[]).length===0 && <div style={{ fontSize:12, color:T.inkLight, fontStyle:'italic' }}>No subheadings yet — add one, or re-fill from your template below.</div>}
+          </div>
+          <div style={{ display:'flex', gap:8, marginTop:10, flexWrap:'wrap' }}>
+            <button onClick={()=>setAData(d=>({...d,observationSections:[...(d.observationSections||[]),{id:(typeof uid!=='undefined'?uid():String(Date.now())),heading:'',text:''}]}))}
+              style={{ background:T.sageLight, border:`1px solid ${T.sage}`, color:T.sageText, borderRadius:8, padding:'7px 14px', fontSize:12, fontWeight:600, cursor:'pointer' }}>＋ Add subheading</button>
+            <button onClick={()=>{ if(!window.confirm('Re-fill the subheadings from your Observation Form template? It appends the template headings; your existing text is kept.')) return; const _tpl=(typeof getEyoTemplate!=='undefined')?getEyoTemplate(data.settings):null; const _secs=[]; if(_tpl&&_tpl.sections) _tpl.sections.forEach(function(sc){ (sc.subs||[]).forEach(function(su){ _secs.push({id:uid(),heading:sc.heading+' \u2014 '+su.label,text:''}); }); }); setAData(d=>({...d, observationSections:[...(d.observationSections||[]), ..._secs]})); }}
+              style={{ background:T.card, border:`1px solid ${T.sandBorder}`, color:T.inkMid, borderRadius:8, padding:'7px 14px', fontSize:12, fontWeight:600, cursor:'pointer' }}>↺ Re-fill from template</button>
+          </div>
         </div>
       )}
 
@@ -10407,6 +10645,241 @@ function UserGuideView() {
 
 
 // ── PhraseBankView — standalone phrase library sidebar view ─────────────────
+function IntakeView({ data, updateData, addToast }) {
+  const s = data.settings || {};
+  const [busy, setBusy] = React.useState(false);
+  const [subs, setSubs] = React.useState(null);
+  const [err, setErr] = React.useState('');
+  const hasKey = !!s.intakePubKey;
+  const su = (s.supabaseUrl||'').replace(/\/+$/,''); const sk = s.supabaseKey;
+  const setupIntake = async () => {
+    setBusy(true); setErr('');
+    try {
+      const ck = _getCurrentKey();
+      if (!ck) throw new Error('Unlock the dashboard first.');
+      if (!su || !sk) throw new Error('Connect Cloud Sync (Supabase) first.');
+      const kp = await _intakeGenKeypair();
+      const privEnc = await _encryptString(JSON.stringify(kp.priv), ck);
+      updateData(d => ({ ...d, settings: { ...d.settings, intakePubKey: kp.pub, intakePrivKeyEnc: privEnc } }));
+      await fetch(`${su}/rest/v1/intake_pubkey`, { method:'POST', headers:_sbHeaders(sk, { 'Content-Type':'application/json', Prefer:'resolution=merge-duplicates' }), body: JSON.stringify({ id:'main', jwk: kp.pub }) });
+      addToast('Secure intake set up');
+    } catch(e) { setErr(e.message); }
+    setBusy(false);
+  };
+  const loadSubs = async () => {
+    setBusy(true); setErr('');
+    try {
+      if (!su || !sk) throw new Error('Connect Cloud Sync first.');
+      const ck = _getCurrentKey();
+      const privJwk = JSON.parse(await _decryptString(s.intakePrivKeyEnc, ck));
+      const r = await fetch(`${su}/rest/v1/intake_submissions?select=id,form_type,created_at,payload&order=created_at.desc`, { headers:_sbHeaders(sk) });
+      if (!r.ok) { setSubs([]); throw new Error((r.status===404||r.status===401) ? 'Intake table not set up yet - run the intake SQL in Supabase.' : ('Could not load submissions: '+r.status)); }
+      const rows = await r.json();
+      const out = [];
+      for (const row of rows) {
+        let answers;
+        try { answers = JSON.parse(await _intakeDecryptSubmission(privJwk, row.payload)); } catch(e) { answers = { _error: 'Could not decrypt this submission.' }; }
+        out.push({ id: row.id, form_type: row.form_type, created_at: row.created_at, answers });
+      }
+      setSubs(out);
+    } catch(e) { setErr(e.message); }
+    setBusy(false);
+  };
+  const discard = async (id) => {
+    if (!window.confirm('Discard this submission permanently?')) return;
+    try { await fetch(`${su}/rest/v1/intake_submissions?id=eq.${id}`, { method:'DELETE', headers:_sbHeaders(sk) }); setSubs(subs.filter(x=>x.id!==id)); addToast('Submission discarded'); } catch(e){ addToast('Discard failed','error'); }
+  };
+  const createClient = (sub) => {
+    const a = sub.answers || {};
+    const name = (a.name || a.childName || a.fullName || a.q_name || 'New intake').toString().trim();
+    const summary = Object.entries(a).filter(([k,v])=>!/^_/.test(k) && v!=='' && v!==false).map(([k,v])=>k+': '+v).join('\n');
+    updateData(d => ({ ...d, clients: [...(d.clients||[]), {
+      name, dob: a.dob||'', school: a.school||'', schoolAddress:'', homeAddress:'',
+      pronouns: a.pronouns||'he/him', diagnosis: a.diagnosis||'', referralSource: a.referralSource||a.completedBy||'Intake form',
+      referralDate: today(), status:'Active', preAssessed:false, reportStatus:'Not started', notes: summary,
+      assessmentType:'Other', activeAssessments:[], id: uid(), createdAt: isoNow(), updatedAt: isoNow(), checklistItems:{}
+    }]}));
+    addToast('Client created from intake - check their record');
+  };
+  const _owner = getOwnerInfo(data);
+  const _formUrl = (file) => { try { if (typeof location!=='undefined' && /^https?:/.test(location.protocol||'')) return new URL(file, location.href).href; } catch(e){} return 'https://app.npot.co.uk/' + file; };
+  const [intakeKind, setIntakeKind] = React.useState('child');
+  const consentUrl = _formUrl(intakeKind==='adult' ? 'ConsentForm_Adult_NicholaOT.html' : 'ConsentForm_NicholaOT.html');
+  const questUrl = _formUrl(intakeKind==='adult' ? 'AdultQuestionnaire_NicholaOT.html' : 'ParentQuestionnaire_NicholaOT.html');
+  const copyText = (t, label) => { try { navigator.clipboard.writeText(t).then(()=>addToast((label||'Link')+' copied \u2713')).catch(()=>addToast('Copy failed','error')); } catch(e){ addToast('Copy failed','error'); } };
+  const _sender = (_owner.fullName||'') + (_owner.jobTitle ? ('\n'+_owner.jobTitle) : '') + (_owner.email ? ('\n'+_owner.email) : '');
+  const emailForms = () => {
+    const tpl = getEmailTemplate(data.settings, 'intake');
+    const vars = { NAME:'there', CONSENT_LINK:consentUrl, QUESTIONNAIRE_LINK:questUrl, SENDER:_sender };
+    const subj = encodeURIComponent(_fillTpl(tpl.subject, vars));
+    const body = encodeURIComponent(_fillTpl(tpl.body, vars));
+    try { window.location.href = 'mailto:?subject=' + subj + '&body=' + body; } catch(e){ addToast('Could not open email','error'); }
+  };
+  const upRef = React.useRef();
+  const [upClient, setUpClient] = React.useState('');
+  const [upType, setUpType] = React.useState('Consent form');
+  const uploadReturned = async (file) => {
+    if (!upClient) { addToast('Choose which client this form is for', 'error'); return; }
+    if (!file) return;
+    try {
+      const dataUrl = await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=()=>rej(new Error('read failed')); r.readAsDataURL(file); });
+      const base64 = String(dataUrl).split(',')[1] || '';
+      const doc = { id:uid(), clientId:upClient, name:file.name, fileType:file.type||'application/octet-stream', category:'Consent & Intake', sizeBytes:file.size, base64:base64, uploadedAt:isoNow(), linkedCommId:null, notes:'Returned ' + upType + ' (uploaded manually)' };
+      if (typeof checkStorageQuota==='function' && !checkStorageQuota(doc.sizeBytes)) return;
+      const cname = ((data.clients||[]).find(c=>c.id===upClient)||{}).name || 'client';
+      updateData(d => {
+        const documents = [...(d.documents||[]), doc];
+        const clients = (d.clients||[]).map(c => { if (c.id!==upClient) return c; const ci={...(c.checklistItems||{})}; if(upType==='Consent form') ci['Consent form signed']=true; if(upType==='Parent questionnaire') ci['Parent questionnaire returned']=true; return {...c, checklistItems:ci}; });
+        return {...d, documents:documents, clients:clients};
+      });
+      addToast('Filed to ' + cname + '\u2019s Documents' + (upType!=='Other' ? ' \u2014 checklist updated \u2713' : ' \u2713'));
+    } catch(e){ addToast('Upload failed - ' + e.message, 'error'); }
+  };
+  const exportBlankForm = async (defKey, title, fmt) => {
+    try {
+      const def = (typeof FORM_DEFS!=='undefined') && FORM_DEFS[defKey];
+      if (!def) { addToast('Form template not found','error'); return; }
+      const fname = title.replace(/[^A-Za-z0-9]+/g,'_').replace(/^_+|_+$/g,'') + (fmt==='pdf'?'.pdf':'.docx');
+      const noEmoji = (s) => String(s||'').replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}]/gu,'').replace(/\uFE0F/g,'').replace(/\s+/g,' ').trim();
+      if (fmt==='docx') {
+        const D = window.docx;
+        const { Document, Packer, Paragraph, TextRun, BorderStyle } = D;
+        let children = [].concat(_docxHeaderChildren(D, title, _owner.reportHeaderLine, !(data.settings && data.settings.reportLogo===false)));
+        children.push(new Paragraph({ spacing:{ after:160 }, children:[ new TextRun({ text:'To be completed with the client. Type or write answers in the spaces provided.', italics:true, size:18, color:'8A9490', font:'Arial' }) ] }));
+        def.sections.forEach(function(sec){
+          children.push(new Paragraph({ spacing:{ before:220, after:90 }, children:[ new TextRun({ text: sec.heading, bold:true, size:23, color:'4A7C6F', font:'Arial' }) ] }));
+          sec.fields.forEach(function(f){
+            if (f.type==='check') {
+              children.push(new Paragraph({ spacing:{ after:80 }, children:[ new TextRun({ text:'☐  '+f.label, size:20, font:'Arial' }) ] }));
+            } else {
+              children.push(new Paragraph({ spacing:{ before:80, after:20 }, children:[ new TextRun({ text:f.label, bold:true, size:20, font:'Arial' }) ] }));
+              const n = f.type==='long' ? 3 : 1;
+              for (let i=0;i<n;i++) children.push(new Paragraph({ spacing:{ after:130 }, border:{ bottom:{ color:'BBBBBB', space:1, style:BorderStyle.SINGLE, size:6 } }, children:[ new TextRun({ text:' ', size:20 }) ] }));
+            }
+          });
+        });
+        const doc = new Document({ sections:[{ properties:{}, children: children }] });
+        const blob = await D.Packer.toBlob(doc);
+        const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=fname; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+      } else {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+        let y = _pdfDocHeader(doc, title, _owner.reportHeaderLine, !(data.settings && data.settings.reportLogo===false));
+        const ml=18, cw=210-36;
+        doc.setFont('helvetica','italic'); doc.setFontSize(8.5); doc.setTextColor(138,148,144);
+        doc.text('To be completed with the client.', ml, y); y+=7;
+        def.sections.forEach(function(sec){
+          if (y>275){ doc.addPage(); y=18; }
+          doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(74,124,111);
+          doc.text(noEmoji(sec.heading), ml, y); y+=6;
+          sec.fields.forEach(function(f){
+            if (y>278){ doc.addPage(); y=18; }
+            if (f.type==='check') {
+              doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(40,40,40);
+              const t = doc.splitTextToSize('[  ]  '+f.label, cw); doc.text(t, ml, y); y += t.length*4.6 + 3;
+            } else {
+              doc.setFont('helvetica','bold'); doc.setFontSize(9.5); doc.setTextColor(40,40,40);
+              const lbl = doc.splitTextToSize(f.label, cw); doc.text(lbl, ml, y); y += lbl.length*4.6 + 1;
+              const n = f.type==='long' ? 3 : 1; doc.setDrawColor(190);
+              for (let i=0;i<n;i++){ y+=6; if(y>285){doc.addPage();y=18;} doc.line(ml, y, ml+cw, y); } y+=6;
+            }
+          });
+          y+=3;
+        });
+        doc.save(fname);
+      }
+      addToast(title.split(' —')[0] + ' (' + (fmt==='pdf'?'PDF':'Word') + ') downloaded');
+    } catch(e) { addToast('Export failed - ' + e.message, 'error'); }
+  };
+  return (
+    <div style={{ padding:'24px 28px', maxWidth:900, margin:'0 auto' }}>
+      <h2 style={{ margin:'0 0 6px', fontSize:20, fontWeight:700, color:T.ink }}>Intake</h2>
+      <div style={{ fontSize:13, color:T.inkMid, marginBottom:18, lineHeight:1.6 }}>Encrypted submissions from your consent &amp; questionnaire forms arrive here. Only you can read them (decrypted with your key). Review, then create a client or discard.</div>
+      <div style={{ background:T.card, border:`1px solid ${T.sandBorder}`, borderRadius:10, padding:'16px 18px', marginBottom:18 }}>
+        <div style={{ fontWeight:700, color:T.ink, marginBottom:4 }}>\uD83D\uDCE8 Send intake forms to a new client</div>
+        <p style={{ fontSize:12, color:T.inkMid, lineHeight:1.6, margin:'0 0 12px' }}>Email both forms to start the intake, or copy a link to paste yourself. The client fills them in online and the answers arrive encrypted below.</p>
+        <div style={{ display:'flex', gap:6, alignItems:'center', marginBottom:12, flexWrap:'wrap' }}>
+          {[['child','\uD83E\uDDF8 Child'],['adult','\uD83E\uDDD1 Adult']].map(([k,lbl]) => (
+            <button key={k} onClick={()=>setIntakeKind(k)} style={{ fontSize:12, fontWeight:700, padding:'6px 14px', borderRadius:20, cursor:'pointer', border:`1px solid ${intakeKind===k?T.sage:T.sandBorder}`, background:intakeKind===k?T.sageLight:T.card, color:intakeKind===k?T.sageText:T.inkMid }}>{lbl}</button>
+          ))}
+          <span style={{ fontSize:11, color:T.inkLight }}>which form set to send</span>
+        </div>
+        <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:12 }}>
+          <Btn onClick={emailForms}><Mail size={13}/> Email both forms to a client</Btn>
+          <Btn variant='secondary' onClick={()=>copyText(consentUrl + '\n' + questUrl, 'Both links')}>Copy both links</Btn>
+        </div>
+        <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+          {[['Consent form', consentUrl],['Questionnaire', questUrl]].map(([lbl,url]) => (
+            <div key={lbl} style={{ display:'flex', alignItems:'center', gap:8, fontSize:12, background:T.sand, borderRadius:6, padding:'7px 10px' }}>
+              <span style={{ fontWeight:700, color:T.ink, minWidth:90, flexShrink:0 }}>{lbl}</span>
+              <span style={{ flex:1, minWidth:0, color:T.inkMid, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{url}</span>
+              <button onClick={()=>copyText(url, lbl+' link')} style={{ fontSize:11, fontWeight:600, color:T.sage, background:T.card, border:`1px solid ${T.sage}`, borderRadius:6, padding:'4px 10px', cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}>Copy link</button>
+            </div>
+          ))}
+        </div>
+        {!hasKey && <div style={{ fontSize:11, color:T.amber, marginTop:10, lineHeight:1.5 }}>\u26A0 Submissions only arrive once you\u2019ve clicked \u201cSet up secure intake\u201d below and uploaded the two form files to your site.</div>}
+      </div>
+      <div style={{ background:T.card, border:`1px solid ${T.sandBorder}`, borderRadius:10, padding:'16px 18px', marginBottom:18 }}>
+        <div style={{ fontWeight:700, color:T.ink, marginBottom:4 }}>📄 Fill a form with a client</div>
+        <p style={{ fontSize:12, color:T.inkMid, lineHeight:1.6, margin:'0 0 12px' }}>For clients who can’t complete the online form themselves — download a blank <strong>{intakeKind==='adult'?'adult':'child'}</strong> form to fill in together (Word to type into, PDF to print and write on), then upload the completed copy below. Use the Child/Adult toggle above to switch.</p>
+        {[['Consent Form', intakeKind==='adult'?'consent_adult':'consent_child'],['Questionnaire', intakeKind==='adult'?'questionnaire_adult':'questionnaire_child']].map(([lbl,key]) => (
+          <div key={key} style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8, flexWrap:'wrap' }}>
+            <span style={{ fontWeight:700, color:T.ink, fontSize:12.5, minWidth:130 }}>{lbl}{intakeKind==='adult'?' (Adult)':''}</span>
+            <Btn small variant='secondary' onClick={()=>exportBlankForm(key, lbl+(intakeKind==='adult'?' (Adult)':'')+' — Nichola Philbey OT', 'docx')}>Word</Btn>
+            <Btn small variant='secondary' onClick={()=>exportBlankForm(key, lbl+(intakeKind==='adult'?' (Adult)':'')+' — Nichola Philbey OT', 'pdf')}>PDF</Btn>
+          </div>
+        ))}
+      </div>
+      <div style={{ background:T.card, border:`1px solid ${T.sandBorder}`, borderRadius:10, padding:'16px 18px', marginBottom:18 }}>
+        <div style={{ fontWeight:700, color:T.ink, marginBottom:4 }}>\uD83D\uDCE5 Upload a returned form (post or email)</div>
+        <p style={{ fontSize:12, color:T.inkMid, lineHeight:1.6, margin:'0 0 12px' }}>Sent a Word/PDF form to someone who doesn\u2019t use the app? Upload the completed file here \u2014 it\u2019s filed to that client\u2019s Documents and ticks their checklist automatically.</p>
+        <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
+          <select value={upClient} onChange={e=>setUpClient(e.target.value)} style={{ fontSize:12.5, padding:'8px 10px', border:`1px solid ${T.sandBorder}`, borderRadius:6, background:T.sandLight, color:T.ink, outline:'none', fontFamily:'inherit', minWidth:180 }}>
+            <option value="">Which client?\u2026</option>
+            {(data.clients||[]).slice().sort((a,b)=>(a.name||'').localeCompare(b.name||'')).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          <select value={upType} onChange={e=>setUpType(e.target.value)} style={{ fontSize:12.5, padding:'8px 10px', border:`1px solid ${T.sandBorder}`, borderRadius:6, background:T.sandLight, color:T.ink, outline:'none', fontFamily:'inherit' }}>
+            <option>Consent form</option>
+            <option>Parent questionnaire</option>
+            <option>Other</option>
+          </select>
+          <Btn variant='secondary' onClick={()=>upRef.current && upRef.current.click()}>Choose file\u2026</Btn>
+          <input ref={upRef} type="file" style={{ display:'none' }} onChange={e=>{ uploadReturned(e.target.files[0]); e.target.value=''; }}/>
+        </div>
+      </div>
+      {err && <div style={{ padding:'10px 14px', background:T.redLight, color:T.red, borderRadius:8, fontSize:12, fontWeight:600, marginBottom:14 }}>{err}</div>}
+      {!hasKey ? (
+        <div style={{ background:T.sagePale, border:`1px solid ${T.sandBorder}`, borderRadius:10, padding:'18px' }}>
+          <div style={{ fontWeight:700, color:T.ink, marginBottom:8 }}>Set up secure intake</div>
+          <p style={{ fontSize:12, color:T.inkMid, lineHeight:1.6, margin:'0 0 12px' }}>Generates an encryption key so parents/carers can submit forms only you can read. Connect Cloud Sync first, and run the intake SQL in Supabase.</p>
+          <Btn onClick={setupIntake} disabled={busy}>{busy ? 'Setting up\u2026' : 'Set up secure intake'}</Btn>
+        </div>
+      ) : (
+        <div>
+          <div style={{ display:'flex', gap:8, marginBottom:14 }}>
+            <Btn onClick={loadSubs} disabled={busy}>{busy ? 'Loading\u2026' : '\u27F3 Check for submissions'}</Btn>
+          </div>
+          {subs && subs.length===0 && <div style={{ fontSize:12, color:T.inkLight, fontStyle:'italic' }}>No submissions yet.</div>}
+          {subs && subs.map(sub => (
+            <div key={sub.id} style={{ border:`1px solid ${T.sandBorder}`, borderRadius:10, padding:'14px 16px', marginBottom:12, background:T.card }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8, gap:8, flexWrap:'wrap' }}>
+                <span style={{ fontWeight:700, color:T.ink, fontSize:13 }}>{(sub.answers&&(sub.answers.name||sub.answers.childName))||'Submission'} <span style={{ fontWeight:400, color:T.inkLight, fontSize:11 }}>\u00b7 {sub.form_type||'form'} \u00b7 {new Date(sub.created_at).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</span></span>
+                <div style={{ display:'flex', gap:6 }}>
+                  <Btn small variant='primary' onClick={()=>createClient(sub)}>Create client</Btn>
+                  <Btn small variant='secondary' onClick={()=>discard(sub.id)}>Discard</Btn>
+                </div>
+              </div>
+              <div style={{ fontSize:12, color:T.inkMid, whiteSpace:'pre-wrap', lineHeight:1.6, maxHeight:220, overflowY:'auto', background:T.sand, borderRadius:6, padding:'8px 10px' }}>
+                {sub.answers && sub.answers._error ? sub.answers._error : Object.entries(sub.answers||{}).filter(([k,v])=>!/^_/.test(k) && v!=='' && v!==false).map(([k,v])=>k+': '+v).join('\n')}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PhraseBankView({ data, updateData, addToast }) {
 
   // ── Section definitions ───────────────────────────────────────────────────
@@ -11879,6 +12352,54 @@ function AssessmentPhrasePicker({ fieldKey, fieldLabel, client, data, updateData
   );
 }
 
+function DischargeModal({ client, onClose, updateClient, addToast }) {
+  const DISCHARGE_REASONS = [
+    'Goals achieved — treatment complete',
+    'Assessment only — no ongoing therapy needed',
+    'Transferred to another provider',
+    'Family withdrew consent / ended treatment',
+    'Moved out of area',
+    'EHCP / school placement changed',
+    'No longer requires OT input',
+    'Other',
+  ];
+  const [dReason, setDReason] = React.useState(DISCHARGE_REASONS[0]);
+  const [dOutcome, setDOutcome] = React.useState('');
+  const [dDate, setDDate] = React.useState(today());
+  return (
+    <Modal title={`Discharge ${client.name}`} onClose={onClose}>
+      <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+        <div style={{ background:T.amberLight, border:`1px solid ${T.amber}`, borderRadius:8, padding:'10px 14px', fontSize:12, color:T.inkMid }}>
+          ⚠ Discharging moves this client to the Archive. Their record is kept for 5 years (GDPR / professional standards). You can reactivate them at any time.
+        </div>
+        <Field label="Discharge date">
+          <Input type="date" value={dDate} onChange={e=>setDDate(e.target.value)}/>
+        </Field>
+        <Field label="Reason for discharge">
+          <Select value={dReason} onChange={e=>setDReason(e.target.value)}>
+            {DISCHARGE_REASONS.map(r => <option key={r}>{r}</option>)}
+          </Select>
+        </Field>
+        <Field label="Outcome summary (optional)">
+          <textarea value={dOutcome} onChange={e=>setDOutcome(e.target.value)}
+            rows={4} placeholder="Brief summary of outcomes achieved, goals met, recommendations made, or reason for ending..."
+            style={{ width:'100%', border:`1px solid ${T.sandBorder}`, borderRadius:8, padding:'8px 10px', fontSize:13, resize:'vertical', fontFamily:'inherit', outline:'none', boxSizing:'border-box', color:T.ink, background:T.card }}
+            onFocus={e=>e.target.style.borderColor=T.sage}
+            onBlur={e=>e.target.style.borderColor=T.sandBorder}/>
+        </Field>
+        <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
+          <Btn variant='secondary' onClick={onClose}>Cancel</Btn>
+          <Btn onClick={() => {
+            updateClient({ ...client, status:'Discharged', dischargedAt: dDate || isoNow(), dischargeReason: dReason, dischargeOutcome: dOutcome.trim(), });
+            addToast(`${client.name} discharged and archived`);
+            onClose();
+          }}>Confirm Discharge</Btn>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 function ClientDetail({ client, data, updateClient, updateData, addToast, initialClientTab=null, initialClientTabGroup=null, onLogJourney }) {
   const [tab, setTab] = useState('overview');
   const [expandedGroup, setExpandedGroup] = useState(null);
@@ -12573,53 +13094,7 @@ function ClientDetail({ client, data, updateClient, updateData, addToast, initia
         );
       })()}
 
-      {showDischargeModal && (() => {
-        const DISCHARGE_REASONS = [
-          'Goals achieved — treatment complete',
-          'Assessment only — no ongoing therapy needed',
-          'Transferred to another provider',
-          'Family withdrew consent / ended treatment',
-          'Moved out of area',
-          'EHCP / school placement changed',
-          'No longer requires OT input',
-          'Other',
-        ];
-        const [dReason, setDReason] = React.useState(DISCHARGE_REASONS[0]);
-        const [dOutcome, setDOutcome] = React.useState('');
-        const [dDate, setDDate] = React.useState(today());
-        return (
-          <Modal title={`Discharge ${client.name}`} onClose={() => setShowDischargeModal(false)}>
-            <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-              <div style={{ background:T.amberLight, border:`1px solid ${T.amber}`, borderRadius:8, padding:'10px 14px', fontSize:12, color:T.inkMid }}>
-                ⚠ Discharging moves this client to the Archive. Their record is kept for 5 years (GDPR / professional standards). You can reactivate them at any time.
-              </div>
-              <Field label="Discharge date">
-                <Input type="date" value={dDate} onChange={e=>setDDate(e.target.value)}/>
-              </Field>
-              <Field label="Reason for discharge">
-                <Select value={dReason} onChange={e=>setDReason(e.target.value)}>
-                  {DISCHARGE_REASONS.map(r => <option key={r}>{r}</option>)}
-                </Select>
-              </Field>
-              <Field label="Outcome summary (optional)">
-                <textarea value={dOutcome} onChange={e=>setDOutcome(e.target.value)}
-                  rows={4} placeholder="Brief summary of outcomes achieved, goals met, recommendations made, or reason for ending..."
-                  style={{ width:'100%', border:`1px solid ${T.sandBorder}`, borderRadius:8, padding:'8px 10px', fontSize:13, resize:'vertical', fontFamily:'inherit', outline:'none', boxSizing:'border-box', color:T.ink, background:T.card }}
-                  onFocus={e=>e.target.style.borderColor=T.sage}
-                  onBlur={e=>e.target.style.borderColor=T.sandBorder}/>
-              </Field>
-              <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
-                <Btn variant='secondary' onClick={() => setShowDischargeModal(false)}>Cancel</Btn>
-                <Btn onClick={() => {
-                  updateClient({ ...client, status:'Discharged', dischargedAt: dDate || isoNow(), dischargeReason: dReason, dischargeOutcome: dOutcome.trim(), });
-                  addToast(`${client.name} discharged and archived`);
-                  setShowDischargeModal(false);
-                }}>Confirm Discharge</Btn>
-              </div>
-            </div>
-          </Modal>
-        );
-      })()}
+      {showDischargeModal && <DischargeModal client={client} onClose={() => setShowDischargeModal(false)} updateClient={updateClient} addToast={addToast} />}
 
       {/* Scores tab removed — score entry now lives in the Assessment tab, beside each test's narrative */}
 
@@ -12654,7 +13129,7 @@ function ClientDetail({ client, data, updateClient, updateData, addToast, initia
                 const pTotal = phase.items.length;
                 const allDone = pDone === pTotal;
                 return (
-                  <div key={phase.label} style={{ background:T.card, border:`1px solid ${phase.border}`, borderLeft:`4px solid ${phase.color}`, borderRadius:10, overflow:'hidden' }}>
+                  <div key={phase.label} style={{ background:T.card, borderTop:`1px solid ${phase.border}`, borderRight:`1px solid ${phase.border}`, borderBottom:`1px solid ${phase.border}`, borderLeft:`4px solid ${phase.color}`, borderRadius:10, overflow:'hidden' }}>
                     <div style={{ background:phase.bg, padding:'10px 14px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                       <span style={{ fontSize:13, fontWeight:700, color:phase.color }}>{phase.emoji} {phase.label}</span>
                       <div style={{ display:'flex', alignItems:'center', gap:8 }}>
@@ -12892,7 +13367,7 @@ function ClientDetail({ client, data, updateClient, updateData, addToast, initia
         (data.goals||[]).filter(g=>g.clientId===client.id).forEach(g=>{
           tlItems.push({ date:g.createdAt?.slice(0,10)||today(), type:'goal', icon:'🎯', color:'#7B6FA0', bg:'#F0EDF8',
             title:`Goal set: ${g.goal||g.title||g.text||'Untitled'}`,
-            body:g.status==='achieved'?`Achieved${g.achievedDate?' on '+fmt(g.achievedDate):''}`:null,
+            body:g.status==='achieved'?`Achieved${(g.achievedAt||g.achievedDate)?' on '+fmt(g.achievedAt||g.achievedDate):''}`:null,
             sub:g.targetDate?`Target: ${fmt(g.targetDate)}`:null,
             onClick:()=>{setTab('goals');setExpandedGroup('Clinical');},
           });
@@ -13513,15 +13988,17 @@ function DocumentsTab({ clientId, clientName, data, updateData, addToast }) {
 
   const deleteDoc = (id) => {
     if (!window.confirm('Delete this document?')) return;
+    try { const _d = (data.documents||[]).find(x => x.id === id); if (_d && _d.storagePath) deleteDocFromCloud(_d); } catch(e){}
     updateData(d => ({ ...d, documents: (d.documents || []).filter(x => x.id !== id) }));
     addToast('Document deleted');
     if (previewDoc && previewDoc.id === id) setPreviewDoc(null);
   };
 
-  const downloadDoc = (doc) => {
-    if (!doc.base64) { addToast('Demo document — no file content to download', 'error'); return; }
+  const downloadDoc = async (doc) => {
+    const _b = await getDocBytes(doc);
+    if (!_b) { addToast('No file content available to download', 'error'); return; }
     const a = document.createElement('a');
-    a.href = doc.base64;
+    a.href = _b;
     a.download = doc.name;
     a.click();
   };
@@ -13546,7 +14023,7 @@ function DocumentsTab({ clientId, clientName, data, updateData, addToast }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <div>
           <h4 style={{ margin: '0 0 2px', fontSize: 14, fontWeight: 700, color: T.ink }}>Documents</h4>
-          <div style={{ fontSize: 12, color: T.inkLight }}>{docs.length} file{docs.length !== 1 ? 's' : ''} · stored locally for now — migrates to cloud on go-live</div>
+          <div style={{ fontSize: 12, color: T.inkLight }}>{docs.length} file{docs.length !== 1 ? 's' : ''} · encrypted &amp; stored in your cloud</div>
         </div>
         <button onClick={() => inputRef.current.click()}
           style={{ background: T.sage, color: 'white', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
@@ -13601,7 +14078,7 @@ function DocumentsTab({ clientId, clientName, data, updateData, addToast }) {
                   <div key={doc.id} style={{ background:T.card, border: `1px solid ${T.sandBorder}`, borderRadius: 10, overflow: 'hidden', transition: 'box-shadow 0.15s' }}
                     onMouseEnter={e => e.currentTarget.style.boxShadow = '0 2px 12px rgba(74,124,111,0.12)'}
                     onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}>
-                    <div onClick={() => setPreviewDoc(doc)} style={{ height: 90, background: T.sagePale, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', cursor: 'pointer' }}>
+                    <div onClick={async () => { const _b = await getDocBytes(doc); if(_b) setPreviewDoc({...doc, base64:_b}); }} style={{ height: 90, background: T.sagePale, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', cursor: 'pointer' }}>
                       {isImage
                         ? <img src={doc.base64} alt={doc.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
                         : <span style={{ fontSize: 36 }}>{FILE_ICON(doc.fileType)}</span>
@@ -13801,7 +14278,7 @@ function CommEntry({ entry, onDelete, onEdit, onFollowUpDone, clientName, docs=[
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {docs.map(doc => (
                   <div key={doc.id} style={{ display: 'flex', alignItems: 'center', gap: 10, background:T.card, border: `1px solid ${T.sandBorder}`, borderRadius: 7, padding: '8px 12px', cursor: doc.base64 ? 'pointer' : 'default' }}
-                    onClick={() => doc.base64 && setPreviewDoc(doc)}
+                    onClick={async () => { const _b = await getDocBytes(doc); if(_b) setPreviewDoc({...doc, base64:_b}); }}
                     onMouseEnter={e => { if (doc.base64) e.currentTarget.style.borderColor = T.sage; }}
                     onMouseLeave={e => { e.currentTarget.style.borderColor = T.sandBorder; }}>
                     <span style={{ fontSize: 18 }}>{FILE_ICON(doc.fileType)}</span>
@@ -14052,16 +14529,18 @@ function AllDocumentsView({ data, updateData, addToast, setView }) {
     } catch (e) { return null; }
   }, [allDocs.length, data.clients.length]);
 
-  const downloadDoc = (doc) => {
-    if (!doc.base64) { addToast('Demo document — no file content to download', 'error'); return; }
+  const downloadDoc = async (doc) => {
+    const _b = await getDocBytes(doc);
+    if (!_b) { addToast('No file content available to download', 'error'); return; }
     const a = document.createElement('a');
-    a.href = doc.base64;
+    a.href = _b;
     a.download = doc.name;
     a.click();
   };
 
   const deleteDoc = (id) => {
     if (!window.confirm('Delete this document?')) return;
+    try { const _d = (data.documents||[]).find(x => x.id === id); if (_d && _d.storagePath) deleteDocFromCloud(_d); } catch(e){}
     updateData(d => ({ ...d, documents: (d.documents || []).filter(x => x.id !== id) }));
     addToast('Document deleted');
     if (previewDoc?.id === id) setPreviewDoc(null);
@@ -14082,7 +14561,7 @@ function AllDocumentsView({ data, updateData, addToast, setView }) {
       <div style={{...S.rowSB, marginBottom:20}}>
         <div>
           <h2 style={{ margin:'0 0 3px', fontSize:20, fontWeight:700, color:T.ink }}>Documents</h2>
-          <div style={{ fontSize:13, color:T.inkLight }}>{allDocs.length} file{allDocs.length !== 1 ? 's' : ''} across all clients · {fmtBytes(totalSize)} total · stored locally for now</div>
+          <div style={{ fontSize:13, color:T.inkLight }}>{allDocs.length} file{allDocs.length !== 1 ? 's' : ''} across all clients · {fmtBytes(totalSize)} total · encrypted in your cloud</div>
         </div>
       </div>
 
@@ -14094,7 +14573,7 @@ function AllDocumentsView({ data, updateData, addToast, setView }) {
         return (
           <div style={{ background:T.card, border:`1px solid ${warn?'#e6b0aa':T.sandBorder}`, borderRadius:10, padding:'14px 16px', marginBottom:22 }}>
             <div style={{ ...S.rowSB, marginBottom:8 }}>
-              <div style={{ fontSize:13, fontWeight:700, color:T.ink }}>This device's storage</div>
+              <div style={{ fontSize:13, fontWeight:700, color:T.ink }}>Local browser cache <span style={{ fontWeight:400, color:T.inkLight }}>(your files live in the cloud)</span></div>
               <div style={{ fontSize:12, color: warn ? '#c0392b' : T.inkMid, fontWeight: warn?700:500 }}>{fmtBytes(storage.appUsed)} of ~{fmtBytes(LS_BUDGET)} used ({Math.round(pct)}%)</div>
             </div>
             <div style={{ height:9, background:T.sandBorder, borderRadius:6, overflow:'hidden' }}>
@@ -14105,7 +14584,7 @@ function AllDocumentsView({ data, updateData, addToast, setView }) {
                 ? '⚠ Storage is nearly full. Browsers limit this app to about 5 MB on this device, and uploaded files count against it. Download and remove older documents you no longer need here, or keep large files in OneDrive/cloud sync instead of attaching them.'
                 : caution
                   ? 'Getting fuller. Large uploaded files (scans, photos) use the most room. Consider keeping big files in OneDrive and attaching only essentials.'
-                  : 'Plenty of room. Note: everything here lives in this browser on this device — keep OneDrive/cloud sync on so a copy is backed up off-device.'}
+                  : 'Your documents are encrypted and stored in your Supabase cloud (not limited to this browser\u2019s ~5 MB) \u2014 this bar is only the small local working copy.'}
             </div>
           </div>
         );
@@ -14183,7 +14662,7 @@ function AllDocumentsView({ data, updateData, addToast, setView }) {
                                 <div key={doc.id} style={{ background:T.card, border:`1px solid ${T.sandBorder}`, borderRadius:10, overflow:'hidden', transition:'box-shadow 0.15s' }}
                                   onMouseEnter={e => e.currentTarget.style.boxShadow = '0 2px 12px rgba(74,124,111,0.12)'}
                                   onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}>
-                                  <div onClick={() => setPreviewDoc(doc)} style={{ height:90, background:T.sagePale, display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden', cursor:'pointer', position:'relative' }}>
+                                  <div onClick={async () => { const _b = await getDocBytes(doc); if(_b) setPreviewDoc({...doc, base64:_b}); }} style={{ height:90, background:T.sagePale, display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden', cursor:'pointer', position:'relative' }}>
                                     {isImage
                                       ? <img src={doc.base64} alt={doc.name} style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
                                       : <span style={{ fontSize:36 }}>{FILE_ICON(doc.fileType)}</span>
@@ -14676,6 +15155,7 @@ function ClientsView({ data, updateData, addToast, initialTab='clients', initial
   const [sortBy, setSortByState] = useState(() => localStorage.getItem('ot_client_sort') || 'recent');
   const setSortBy = (s) => { setSortByState(s); localStorage.setItem('ot_client_sort', s); };
   const [adding, setAdding] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [selected, setSelected] = useState(initialClientId);
   // Register/unregister a deselect handler with the App-level Back button.
   // When a client is open, Back → client list. When on the list, Back → previous view.
@@ -14800,7 +15280,7 @@ function ClientsView({ data, updateData, addToast, initialTab='clients', initial
       <div style={{...S.rowSB, marginBottom:20}}>
         <h2 style={{ margin:0, fontSize:20, fontWeight:700, color:T.ink }}>Clients</h2>
         {tab === 'clients'
-          ? <Btn onClick={()=>setAdding(true)}><Plus size={14}/> Add Client</Btn>
+          ? <div style={{ display:'flex', gap:8 }}><Btn variant='secondary' onClick={()=>setImporting(true)}>\uD83D\uDCC4 Import</Btn><Btn onClick={()=>setAdding(true)}><Plus size={14}/> Add Client</Btn></div>
           : <Btn onClick={()=>setAddingWait(true)}><Plus size={14}/> Add to Waiting List</Btn>
         }
       </div>
@@ -14881,7 +15361,7 @@ function ClientsView({ data, updateData, addToast, initialTab='clients', initial
                 const clientGoals = (data.goals||[]).filter(g=>g.clientId===c.id);
                 const achievedGoals = clientGoals.filter(g=>g.status==='achieved').length;
                 return (
-                  <div key={c.id} onClick={()=>setSelected(c.id)} style={{ background:T.card, border:`1px solid ${T.sandBorder}`, borderLeft:`4px solid ${STATUS_COLORS[c.status]||T.sandBorder}`, borderRadius:10, padding:'14px 18px', cursor:'pointer', display:'flex', alignItems:'center', gap:16, transition:'box-shadow 0.15s' }}
+                  <div key={c.id} onClick={()=>setSelected(c.id)} style={{ background:T.card, borderTop:`1px solid ${T.sandBorder}`, borderRight:`1px solid ${T.sandBorder}`, borderBottom:`1px solid ${T.sandBorder}`, borderLeft:`4px solid ${STATUS_COLORS[c.status]||T.sandBorder}`, borderRadius:10, padding:'14px 18px', cursor:'pointer', display:'flex', alignItems:'center', gap:16, transition:'box-shadow 0.15s' }}
                     onMouseEnter={e=>e.currentTarget.style.boxShadow='0 2px 12px rgba(74,124,111,0.1)'}
                     onMouseLeave={e=>e.currentTarget.style.boxShadow='none'}>
                     <div style={{ width:44, height:44, borderRadius:8, background:(['#4A7C6F','#7B6FA0','#D4821A','#2E7D9E','#B5451B','#2D6A4F','#5C4B8A'][c.name.charCodeAt(0)%7]), display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, fontWeight:800, color:'white', flexShrink:0, letterSpacing:'0.5px', boxShadow:'0 2px 6px rgba(0,0,0,0.18)', fontFamily:'system-ui,sans-serif' }}>{c.name.split(' ').filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join('') || '?'}</div>
@@ -14971,7 +15451,7 @@ function ClientsView({ data, updateData, addToast, initialTab='clients', initial
                 const packOver = packTotal ? packSessions > packTotal : false;
                 return (
                   <div key={c.id} onClick={()=>setSelected(c.id)}
-                    style={{ background:T.card, border:`1px solid ${T.sandBorder}`, borderLeft:`4px solid ${STATUS_COLORS[c.status]||T.sandBorder}`, borderRadius:10, padding:0, cursor:'pointer', display:'flex', flexDirection:'column', overflow:'hidden', transition:'box-shadow 0.15s, transform 0.1s' }}
+                    style={{ background:T.card, borderTop:`1px solid ${T.sandBorder}`, borderRight:`1px solid ${T.sandBorder}`, borderBottom:`1px solid ${T.sandBorder}`, borderLeft:`4px solid ${STATUS_COLORS[c.status]||T.sandBorder}`, borderRadius:10, padding:0, cursor:'pointer', display:'flex', flexDirection:'column', overflow:'hidden', transition:'box-shadow 0.15s, transform 0.1s' }}
                     onMouseEnter={e=>{ e.currentTarget.style.boxShadow='0 4px 16px rgba(74,124,111,0.12)'; e.currentTarget.style.transform='translateY(-1px)'; }}
                     onMouseLeave={e=>{ e.currentTarget.style.boxShadow='none'; e.currentTarget.style.transform='none'; }}>
                     {/* Card body */}
@@ -15157,6 +15637,7 @@ function ClientsView({ data, updateData, addToast, initialTab='clients', initial
       )}
 
       {adding && <AddClientModal onSave={addClient} onClose={()=>setAdding(false)} apiKey={(data.settings||{}).getAddressApiKey || ''}/>}
+      {importing && <ImportClientModal onSave={(c)=>{ addClient(c); setImporting(false); }} onClose={()=>setImporting(false)}/>}
       {addingWait && <WaitForm onSave={w => { updateData(d => ({ ...d, waitlist:[...(d.waitlist||[]), w] })); addToast(`${w.name} added to waiting list`); setAddingWait(false); }} onClose={()=>setAddingWait(false)}/>}
       {editingWait && <WaitForm initial={editingWait} onSave={w => { updateWaitEntry(w); addToast(`${w.name} updated`); setEditingWait(null); }} onClose={()=>setEditingWait(null)}/>}
 
@@ -15473,7 +15954,7 @@ function CalendarView({ data, updateData, addToast }) {
           <Field label="Notes"><ExpandableTextarea rows={3} value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))}/></Field>
           <Field label="Write-up form">
             <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-              {[['standard','📝 Session note'],['eyo','🧸 Observation Form']].map(([v,lbl]) => (
+              {[['standard','📝 Session note']].map(([v,lbl]) => (
                 <button key={v} type="button" onClick={()=>setForm(f=>({...f,formType:v}))}
                   style={{ padding:'6px 14px', borderRadius:20, border:`1px solid ${(form.formType||'standard')===v?T.sage:T.sandBorder}`, background:(form.formType||'standard')===v?T.sageLight:T.card, color:(form.formType||'standard')===v?T.sageText:T.inkMid, fontSize:12, fontWeight:(form.formType||'standard')===v?700:400, cursor:'pointer' }}>{lbl}</button>
               ))}
@@ -15515,12 +15996,16 @@ function CalendarView({ data, updateData, addToast }) {
 function SessionNoteView({ session, client, data, updateData, addToast, onDelete, onGoogleCal, onEditSession, onLogJourney }) {
   const ls = 2.2; // fixed spacious line spacing (toggle removed)
   const existingNote = data.sessionNotes?.find(n => n.sessionId === session.id);
-  const [goals, setGoals] = useState(existingNote?.goals || '');
-  const [observations, setObservations] = useState(existingNote?.observations || '');
-  const [clientResponse, setClientResponse] = useState(existingNote?.clientResponse || '');
-  const [nextSteps, setNextSteps] = useState(existingNote?.nextSteps || '');
+  const sessionTpl = React.useMemo(() => (existingNote && existingNote.sessionTpl && Array.isArray(existingNote.sessionTpl.fields) && existingNote.sessionTpl.fields.length) ? existingNote.sessionTpl : getSessionNoteTemplate(data.settings), [data.settings]);
+  const _SN_KNOWN = ['goals','observations','clientResponse','nextSteps','text'];
+  const _snBoiler = (id) => { const f = sessionTpl.fields.find(x=>x.id===id); return (f && f.boilerplate) || ''; };
+  const [goals, setGoals] = useState(existingNote ? (existingNote.goals || '') : _snBoiler('goals'));
+  const [observations, setObservations] = useState(existingNote ? (existingNote.observations || '') : _snBoiler('observations'));
+  const [clientResponse, setClientResponse] = useState(existingNote ? (existingNote.clientResponse || '') : _snBoiler('clientResponse'));
+  const [nextSteps, setNextSteps] = useState(existingNote ? (existingNote.nextSteps || '') : _snBoiler('nextSteps'));
+  const [snExtra, setSnExtra] = useState(() => { if (existingNote) return existingNote.extraFields || {}; const o={}; sessionTpl.fields.forEach(f=>{ if(_SN_KNOWN.indexOf(f.id)<0) o[f.id]=f.boilerplate||''; }); return o; });
   const [attendance, setAttendance] = useState(existingNote?.attendance || (session.dna ? 'dna' : 'attended'));
-  const [freeText, setFreeText] = useState(existingNote?.text || '');
+  const [freeText, setFreeText] = useState(existingNote ? (existingNote.text || '') : _snBoiler('text'));
   const [formType, setFormType] = useState(existingNote?.formType || session.formType || 'standard');
   // Freeze: a saved observation keeps the template structure it was written against;
   // later edits to the master template never change existing observations.
@@ -15592,7 +16077,30 @@ function SessionNoteView({ session, client, data, updateData, addToast, onDelete
 
   const fieldSetters = { goals: setGoals, observations: setObservations, clientResponse: setClientResponse, nextSteps: setNextSteps, text: setFreeText };
   const fieldGetters = { goals, observations, clientResponse, nextSteps, text: freeText };
+  const getFieldVal = (id) => _SN_KNOWN.indexOf(id)>=0 ? (fieldGetters[id]||'') : (snExtra[id]||'');
+  const setFieldVal = (id, v) => { if (fieldSetters[id]) fieldSetters[id](v); else setSnExtra(p=>({...p,[id]:v})); setIsDirty(true); };
 
+
+  const sessionDocsRef = React.useRef();
+  const sessionDocs = (data.documents || []).filter(d => d.linkedSessionId === session.id);
+  const attachSessionFiles = async (fileList) => {
+    const fls = Array.from(fileList || []);
+    if (!fls.length) return;
+    try {
+      const newDocs = [];
+      for (const file of fls) {
+        const dataUrl = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(new Error('read failed')); r.readAsDataURL(file); });
+        const base64 = String(dataUrl).split(',')[1] || '';
+        newDocs.push({ id: uid(), clientId: session.clientId, name: file.name, fileType: file.type || 'application/octet-stream', category: 'Session', sizeBytes: file.size, base64: base64, uploadedAt: isoNow(), linkedCommId: null, linkedSessionId: session.id, notes: 'Attached to ' + (session.type||'session') + ' on ' + (session.date||'') });
+      }
+      const totalNewBytes = newDocs.reduce((t, d) => t + (d.sizeBytes || 0), 0);
+      if (typeof checkStorageQuota === 'function' && !checkStorageQuota(totalNewBytes)) return;
+      updateData(d => ({ ...d, documents: [ ...(d.documents||[]), ...newDocs ] }));
+      addToast(newDocs.length + ' document' + (newDocs.length>1?'s':'') + ' attached to this session');
+    } catch(e) { addToast('Could not attach file - ' + e.message, 'error'); }
+  };
+  const removeSessionDoc = (id) => { if (!window.confirm('Remove this document from the session? (It will also be removed from the client\u2019s Documents tab.)')) return; try { const _d = (data.documents||[]).find(x => x.id === id); if (_d && _d.storagePath) deleteDocFromCloud(_d); } catch(e){} updateData(d => ({ ...d, documents: (d.documents||[]).filter(x => x.id !== id) })); };
+  const downloadSessionDoc = async (doc) => { try { const _b = await getDocBytes(doc); if(!_b){ addToast('No file content available','error'); return; } const a = document.createElement('a'); a.href = (String(_b).indexOf('data:')===0 ? _b : ('data:' + (doc.fileType||'application/octet-stream') + ';base64,' + _b)); a.download = doc.name || 'document'; document.body.appendChild(a); a.click(); a.remove(); } catch(e) { addToast('Could not open file','error'); } };
 
   const save = () => {
     const notes = data.sessionNotes || [];
@@ -15604,6 +16112,8 @@ function SessionNoteView({ session, client, data, updateData, addToast, onDelete
       text: freeText,
       formType, eyo, eyoStatus, noteStatus,
       eyoTpl: formType==='eyo' ? eyoTpl : undefined,
+      sessionTpl: formType!=='eyo' ? sessionTpl : undefined,
+      extraFields: snExtra,
       updatedAt: isoNow()
     };
     const updated = [...notes];
@@ -15702,11 +16212,7 @@ function SessionNoteView({ session, client, data, updateData, addToast, onDelete
         });
         if((freeText||'').trim()) para('Additional Notes',freeText);
       } else {
-        if(incNote('goals')) para('Session Goals',goals);
-        if(incNote('observations')) para('Observations / What Happened',observations);
-        if(incNote('clientResponse')) para('Cooperation and Motivation',clientResponse);
-        if(incNote('nextSteps')) para('Next Steps & Actions',nextSteps);
-        if(incNote('text')) para('Additional Notes',freeText);
+        sessionTpl.fields.forEach(f => { if(incNote(f.id)) para(f.label, getFieldVal(f.id)); });
       }
       // ── Footer on every page: child name · DOB · age ──
       const footStr=[client?.name, client?.dob?('DOB '+fmt(client.dob)):'', client?.dob?('Age '+(ageExact(client.dob)?.short||'')):''].filter(Boolean).join('   \u00b7   ');
@@ -15778,8 +16284,7 @@ function SessionNoteView({ session, client, data, updateData, addToast, onDelete
         });
         if((freeText||'').trim()){ children.push(band('Additional Notes')); children.push(para(freeText)); }
       } else {
-        const std=[['goals','Session Goals',goals],['observations','Observations / What Happened',observations],['clientResponse','Cooperation and Motivation',clientResponse],['nextSteps','Next Steps & Actions',nextSteps],['text','Additional Notes',freeText]];
-        std.forEach(([k,label,val])=>{ if(incNote(k) && (val||'').trim()){ children.push(band(label)); children.push(para(val)); } });
+        sessionTpl.fields.forEach(f => { const _v=getFieldVal(f.id); if(incNote(f.id) && (_v||'').trim()){ children.push(band(f.label)); children.push(para(_v)); } });
       }
       // ── Per-page footer: child name · DOB · age ──
       const footStr=[client?.name, client?.dob?('DOB '+fmt(client.dob)):'', client?.dob?('Age '+(ageExact(client.dob)?.short||'')):''].filter(Boolean).join('   \u00b7   ');
@@ -15835,6 +16340,8 @@ function SessionNoteView({ session, client, data, updateData, addToast, onDelete
       nextSteps: 'Write ONLY the Next Steps & Actions field — what needs to happen before the next session.',
     };
 
+    const _snFld = sessionTpl.fields.find(f=>f.id===fieldOnly);
+    const _fieldInstr = fieldInstructions[fieldOnly] || ('Write ONLY the "' + ((_snFld&&_snFld.label)||fieldOnly) + '" field.' + ((_snFld&&_snFld.prompt) ? (' Guidance: ' + _snFld.prompt) : ''));
     const prompt = fieldOnly
       ? `You are a UK paediatric occupational therapist writing clinical session notes. Write in third person, British English, professional OT style. Be concise and specific.
 
@@ -15844,7 +16351,7 @@ ${sessionContext}
 Rough notes from the therapist:
 ${roughNotes || 'No notes provided — use the session context to write appropriate content.'}
 
-${fieldInstructions[fieldOnly]}
+${_fieldInstr}
 
 Return only the text for that field, no labels or headers.`
       : `You are a UK paediatric occupational therapist writing clinical session notes. Write in third person, British English, professional OT style. Be concise and specific.
@@ -15866,8 +16373,7 @@ Write four separate sections. Return ONLY a JSON object with exactly these keys,
     try {
       const text = await window.claude.complete(prompt, { model:'claude-sonnet-4-6', maxTokens:1400 });
       if (fieldOnly) {
-        const setter = fieldSetters[fieldOnly];
-        if (setter) setter(text.trim());
+        setFieldVal(fieldOnly, text.trim());
       } else {
         try {
           const clean = text.replace(/```json|```/g, '').trim();
@@ -15885,6 +16391,18 @@ Write four separate sections. Return ONLY a JSON object with exactly these keys,
     } catch(e) { addToast(e.message==='NO_API_KEY' ? 'Add your AI key in the Annie tab to use Draft' : ('AI drafting failed — ' + e.message), 'error'); }
     setAiDrafting(false);
     setAiDraftField(null);
+  };
+
+  const draftEyoField = async (su, sec) => {
+    setAiDrafting(true); setAiDraftField('eyo_'+su.id);
+    try {
+      const ctx = 'CHILD: ' + (client?.name||'') + ', age ' + (ageExact(client?.dob)?.short||'unknown') + '. Structured observation' + (session?.date ? (' on ' + session.date) : '') + '.';
+      const prompt = 'You are a UK paediatric occupational therapist writing the "' + sec.heading + ' - ' + su.label + '" part of a structured observation.' + (su.prompt ? (' Focus: ' + su.prompt) : '') + '\n\n' + ctx + '\n\nRough notes from the therapist (expand into professional clinical observation prose; if none are given, write a brief professional placeholder for her to edit):\n' + (eyo[su.id] || freeText || 'No notes recorded yet.') + '\n\nWrite 2-4 sentences in third person, British English, professional OT style. Return only the text, no heading.';
+      const text = await window.claude.complete(prompt, { model:'claude-sonnet-4-6', maxTokens:700 });
+      setEyoField(su.id, String(text||'').trim());
+      addToast(su.label + ' drafted \u2728');
+    } catch(e) { addToast(e.message==='NO_API_KEY' ? 'Add your AI key in the Annie tab to use Draft' : ('AI drafting failed - ' + e.message), 'error'); }
+    setAiDrafting(false); setAiDraftField(null);
   };
 
   const StructuredField = ({ label, value, onChange, field, placeholder, rows=3 }) => (
@@ -16017,7 +16535,7 @@ Write four separate sections. Return ONLY a JSON object with exactly these keys,
         {/* Form type — standard session note vs Observation Form */}
         <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16, flexWrap:'wrap' }}>
           <span style={{ fontSize:11, fontWeight:700, color:T.inkLight, textTransform:'uppercase', letterSpacing:'0.05em' }}>Form</span>
-          {[['standard','📝 Session note'],['eyo','🧸 Observation Form']].map(([v,lbl]) => (
+          {[['standard','📝 Session note']].map(([v,lbl]) => (
             <button key={v} onClick={() => { if (formType!==v) { setFormType(v); setIsDirty(true); } }}
               style={{ padding:'5px 14px', borderRadius:20, border:`1px solid ${formType===v?T.sage:T.sandBorder}`, background:formType===v?T.sageLight:T.card, color:formType===v?T.sageText:T.inkMid, fontSize:12, fontWeight:formType===v?700:400, cursor:'pointer', transition:'all 0.15s' }}>{lbl}</button>
           ))}
@@ -16072,7 +16590,10 @@ Write four separate sections. Return ONLY a JSON object with exactly these keys,
                   <div key={su.id} style={{ marginBottom:16, opacity: eyoIncluded(sec.id) && eyoIncluded(su.id) ? 1 : 0.45 }}>
                     <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, marginBottom:2 }}>
                       <span style={{ fontSize:12.5, fontWeight:600, color:T.ink }}>{su.label}</span>
-                      {eyoToggle(su.id)}
+                      <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                        <button onClick={()=>draftEyoField(su, sec)} disabled={aiDrafting} title="AI draft this field" style={{ display:'flex', alignItems:'center', gap:4, background:T.card, color:T.sage, border:`1px solid ${T.sage}`, borderRadius:20, padding:'2px 9px', fontSize:11, fontWeight:600, cursor:'pointer', opacity: (aiDrafting && aiDraftField!=='eyo_'+su.id) ? 0.5 : 1 }}>{aiDrafting && aiDraftField==='eyo_'+su.id ? '\u2026' : '\u2728'} Draft</button>
+                        {eyoToggle(su.id)}
+                      </div>
                     </div>
                     {su.prompt && <div style={{ fontSize:11, color:T.inkLight, fontStyle:'italic', marginBottom:4, lineHeight:1.45 }}>{su.prompt}</div>}
                     <ExpandableTextarea rows={5} value={eyo[su.id]||''} onChange={e=>setEyoField(su.id, e.target.value)} placeholder="Record observations…" style={{ lineHeight: ls }}/>
@@ -16086,13 +16607,33 @@ Write four separate sections. Return ONLY a JSON object with exactly these keys,
           </div>
         ) : (
           <div>
-            {StructuredField({ label:"Session Goals", field:"goals", value:goals, onChange:(v)=>{setGoals(v);setIsDirty(true);}, placeholder:"What were the goals/aims for this session?", rows:4 })}
-            {StructuredField({ label:"Observations / What Happened", field:"observations", value:observations, onChange:(v)=>{setObservations(v);setIsDirty(true);}, placeholder:"What activities were carried out? What did you observe?", rows:8 })}
-            {StructuredField({ label:"Cooperation and Motivation", field:"clientResponse", value:clientResponse, onChange:(v)=>{setClientResponse(v);setIsDirty(true);}, placeholder:"How did the child engage? Cooperation, motivation, mood, energy…", rows:5 })}
-            {StructuredField({ label:"Next Steps & Actions", field:"nextSteps", value:nextSteps, onChange:(v)=>{setNextSteps(v);setIsDirty(true);}, placeholder:"What needs to happen before the next session? Actions for family/school/OT?", rows:5 })}
-            {StructuredField({ label:"Additional Notes", field:"text", value:freeText, onChange:(v)=>{setFreeText(v);setIsDirty(true);}, placeholder:"Anything else to record…", rows:3 })}
+            {sessionTpl.fields.map(f => (
+              <React.Fragment key={f.id}>
+                {StructuredField({ label:f.label, field:f.id, value:getFieldVal(f.id), onChange:(v)=>{ setFieldVal(f.id, v); }, placeholder:f.prompt||'', rows:f.rows||4 })}
+              </React.Fragment>
+            ))}
           </div>
         )}
+
+        <div style={{ marginTop:18, paddingTop:14, borderTop:`1px solid ${T.sandBorder}` }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, marginBottom:8 }}>
+            <span style={{ fontSize:12.5, fontWeight:700, color:T.ink }}>\ud83d\udcce Attached documents{sessionDocs.length>0 ? (' (' + sessionDocs.length + ')') : ''}</span>
+            <button onClick={()=>sessionDocsRef.current && sessionDocsRef.current.click()} style={{ fontSize:11, fontWeight:600, color:T.sage, background:T.card, border:`1px solid ${T.sage}`, borderRadius:6, padding:'4px 12px', cursor:'pointer' }}>+ Attach file</button>
+            <input ref={sessionDocsRef} type="file" multiple style={{ display:'none' }} onChange={e=>{ attachSessionFiles(e.target.files); e.target.value=''; }}/>
+          </div>
+          {sessionDocs.length === 0
+            ? <div style={{ fontSize:11.5, color:T.inkLight, fontStyle:'italic' }}>Attach photos, worksheets, scanned forms or any file to keep them with this session. They also appear in the client\u2019s Documents tab.</div>
+            : <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                {sessionDocs.map(doc => (
+                  <div key={doc.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'7px 10px', border:`1px solid ${T.sandBorder}`, borderRadius:8, background:T.sandLight }}>
+                    <span style={{ flex:1, minWidth:0, fontSize:12, color:T.ink, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>\ud83d\udcc4 {doc.name}</span>
+                    <span style={{ fontSize:10.5, color:T.inkLight, flexShrink:0 }}>{Math.max(1,Math.round((doc.sizeBytes||0)/1024))} KB</span>
+                    <button onClick={()=>downloadSessionDoc(doc)} style={{ fontSize:11, color:T.sage, background:'none', border:'none', cursor:'pointer', fontWeight:600 }}>Download</button>
+                    <button onClick={()=>removeSessionDoc(doc.id)} title="Remove" style={{ fontSize:13, color:T.inkLight, background:'none', border:'none', cursor:'pointer' }}>\u2715</button>
+                  </div>
+                ))}
+              </div>}
+        </div>
 
         <div style={{ display:'flex', alignItems:'center', justifyContent:'flex-end', gap:8, paddingTop:12, borderTop:`1px solid ${T.sandBorder}`, marginTop:4 }}>
           {isDirty && <span style={{ fontSize:11, color:T.amber, fontWeight:600, marginRight:4 }}>● Unsaved changes</span>}
@@ -16522,7 +17063,7 @@ function InvoicePDF({ inv, client, settings, contractor, onClose }) {
   const statusColor = { Paid:'#4A7C6F', Unpaid:'#D4821A', Overdue:'#C0392B' };
   const bankDetails = settings || {};
 
-  const exportPDF = () => {
+  const exportPDF = (opts) => {
     setGenerating(true);
     try {
       const { jsPDF } = window.jspdf;
@@ -16705,9 +17246,31 @@ function InvoicePDF({ inv, client, settings, contractor, onClose }) {
       if (_owner.email) { y += 4.5; text(_owner.email, W/2, y, { align:'center' }); }
 
       // ── Save ─────────────────────────────────────────────────────
+      if (opts && opts.returnB64) { const _b64 = doc.output('datauristring').split(',')[1]; setGenerating(false); return _b64; }
       doc.save(`${inv.invoiceNumber || 'invoice'}-NicholaPhilbeyOT.pdf`);
     } catch(e) {
       alert('Could not generate PDF: ' + e.message);
+    }
+    setGenerating(false);
+  };
+
+  const sendInvoiceViaOutlook = async () => {
+    const _def = inv.billTo==='marie' ? (contractor?.email||'') : '';
+    const to = window.prompt('Send this invoice to which email address?', _def);
+    if (!to) return;
+    setGenerating(true);
+    try {
+      const b64 = exportPDF({ returnB64: true });
+      if (!b64) throw new Error('could not build the PDF');
+      const token = await msAcquireToken(['Mail.Send']);
+      const _fn = inv.billTo==='marie' ? (contractor?.name||'Marie') : ((client?.name||inv.clientName||'').split(' ')[0]||'there');
+      const body = 'Dear ' + _fn + ',\n\nPlease find attached invoice ' + (inv.invoiceNumber||'') + ' for occupational therapy services.\n\nAmount: \u00a3' + (parseFloat(inv.amount||0).toFixed(2)) + (inv.dueDate ? ('\nPayment is kindly requested by ' + fmt(inv.dueDate)) : '') + '\n\nPlease do not hesitate to contact me with any queries.\n\nKind regards,\n' + _owner.fullName;
+      const payload = { message: { subject:'Invoice ' + (inv.invoiceNumber||'') + ' \u2014 Occupational Therapy', body:{ contentType:'Text', content: body }, toRecipients:[{ emailAddress:{ address: to } }], attachments:[{ '@odata.type':'#microsoft.graph.fileAttachment', name:(inv.invoiceNumber||'invoice')+'-NicholaPhilbeyOT.pdf', contentType:'application/pdf', contentBytes: b64 }] }, saveToSentItems:true };
+      const r = await fetch('https://graph.microsoft.com/v1.0/me/sendMail', { method:'POST', headers:{ 'Authorization':'Bearer '+token, 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
+      if (!(r.ok || r.status===202)) throw new Error('Microsoft rejected the send (' + r.status + ')');
+      alert('Invoice emailed to ' + to + ' with the PDF attached \u2705');
+    } catch(e) {
+      alert('Could not send via Outlook: ' + e.message + '. You can use \u201cDownload + Email\u201d instead, or check Microsoft 365 is connected (Profile & Settings).');
     }
     setGenerating(false);
   };
@@ -16886,10 +17449,14 @@ function InvoicePDF({ inv, client, settings, contractor, onClose }) {
             style={{ background:'rgba(255,255,255,0.15)', color:'white', border:'1px solid rgba(255,255,255,0.3)', borderRadius:8, padding:'11px 18px', fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
             <Download size={14}/> Word
           </button>
-          <button onClick={() => { try { exportPDF(); } catch(e){} const _fn=(inv.billTo==='marie' ? (contractor?.name||'Marie') : ((client?.name||inv.clientName||'').split(' ')[0]||'there')); const _sub=encodeURIComponent('Invoice ' + (inv.invoiceNumber||'') + ' \u2014 Occupational Therapy'); const _body=encodeURIComponent('Dear ' + _fn + ',\n\nPlease find attached invoice ' + (inv.invoiceNumber||'') + ' for occupational therapy services. (The PDF has just downloaded to your device \u2014 please attach it to this email.)\n\nAmount: \u00a3' + (parseFloat(inv.amount||0).toFixed(2)) + (inv.dueDate ? ('\nDue date: ' + fmt(inv.dueDate)) : '') + '\n\nPlease don\u2019t hesitate to contact me with any queries.\n\nKind regards,\n' + _owner.fullName); window.location.href = 'mailto:?subject=' + _sub + '&body=' + _body; }}
+          <button onClick={() => { try { exportPDF(); } catch(e){} const _fn=(inv.billTo==='marie' ? (contractor?.name||'Marie') : ((client?.name||inv.clientName||'').split(' ')[0]||'there')); const _t=getEmailTemplate(settings,'invoice'); const _vars={ NAME:_fn, INVOICE_NO:(inv.invoiceNumber||''), AMOUNT:(parseFloat(inv.amount||0).toFixed(2)), DUE:(inv.dueDate?('\nDue date: '+fmt(inv.dueDate)):''), SENDER:(_owner.fullName||'') }; const _sub=encodeURIComponent(_fillTpl(_t.subject,_vars)); const _body=encodeURIComponent(_fillTpl(_t.body,_vars)); window.location.href = 'mailto:?subject=' + _sub + '&body=' + _body; }}
             style={{ background:'rgba(255,255,255,0.15)', color:'white', border:'1px solid rgba(255,255,255,0.3)', borderRadius:8, padding:'11px 18px', fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
             <Mail size={14}/> Download + Email
           </button>
+          {isMSConfigured() && <button onClick={sendInvoiceViaOutlook} disabled={generating}
+            style={{ background:'rgba(255,255,255,0.15)', color:'white', border:'1px solid rgba(255,255,255,0.3)', borderRadius:8, padding:'11px 18px', fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
+            <Mail size={14}/> Send via Outlook
+          </button>}
           <span style={{ fontSize:12, color:'rgba(255,255,255,0.7)' }}>“Download + Email” saves the PDF and opens a draft — attach the file you just downloaded.</span>
         </div>
         <button onClick={onClose}
@@ -17458,7 +18025,7 @@ function InvoicesView({ data, updateData, addToast }) {
       </div>
 
       {bankDetailsMissing && (
-        <div style={{ background:T.amberLight, border:`1px solid ${T.amber}40`, borderLeft:`4px solid ${T.amber}`, borderRadius:10, padding:'12px 16px', marginBottom:20, display:'flex', alignItems:'center', justifyContent:'space-between', gap:12 }}>
+        <div style={{ background:T.amberLight, borderTop:`1px solid ${T.amber}40`, borderRight:`1px solid ${T.amber}40`, borderBottom:`1px solid ${T.amber}40`, borderLeft:`4px solid ${T.amber}`, borderRadius:10, padding:'12px 16px', marginBottom:20, display:'flex', alignItems:'center', justifyContent:'space-between', gap:12 }}>
           <div style={{ display:'flex', alignItems:'center', gap:10 }}>
             <span style={{ fontSize:18 }}>⚠️</span>
             <div>
@@ -19308,7 +19875,7 @@ function SupervisionView({ data, updateData, addToast }) {
 
       {/* Outstanding actions banner */}
       {lastSession?.actionsAgreed && (
-        <div style={{ background:T.amberLight, border:`1px solid ${T.amber}40`, borderLeft:`4px solid ${T.amber}`, borderRadius:10, padding:'12px 18px', marginBottom:20 }}>
+        <div style={{ background:T.amberLight, borderTop:`1px solid ${T.amber}40`, borderRight:`1px solid ${T.amber}40`, borderBottom:`1px solid ${T.amber}40`, borderLeft:`4px solid ${T.amber}`, borderRadius:10, padding:'12px 18px', marginBottom:20 }}>
           <div style={{ fontSize:11, fontWeight:700, color:T.amber, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:4 }}>Actions from last session — {fmt(lastSession.date)}</div>
           <div style={S.body}>{lastSession.actionsAgreed || lastSession.actions}</div>
         </div>
@@ -19729,6 +20296,7 @@ function BackupsButton({ data, updateData, addToast }) {
 // ── Backup-to-file metadata (plain, unencrypted — survives password reset) ──
 const BACKUP_PREFS_KEY = 'ot-clients-backup-prefs';
 const BACKUP_SOFT_NAG_DAYS = 7;
+const AUTO_BACKUP_DAYS = 1; // auto-save a fresh JSON file daily (separate from the visual nag)
 const BACKUP_HARD_NAG_DAYS = 14;
 const _BACKUP_PREFS_DEFAULTS = { lastExportAt:null, autoExportEnabled:true, dismissedSoftBannerOn:null, welcomedAt:null };
 function getBackupPrefs() {
@@ -19754,7 +20322,12 @@ function downloadJSONBackup(data) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `ot-dashboard-backup-${today()}.json`;
+  const _d = new Date();
+  const _pad = (n)=>String(n).padStart(2,'0');
+  const _w = (function(dt){ const t=new Date(Date.UTC(dt.getFullYear(),dt.getMonth(),dt.getDate())); const dy=t.getUTCDay()||7; t.setUTCDate(t.getUTCDate()+4-dy); const ys=new Date(Date.UTC(t.getUTCFullYear(),0,1)); return { y:t.getUTCFullYear(), w:_pad(Math.ceil((((t-ys)/86400000)+1)/7)) }; })(_d);
+  const _stamp = _d.getFullYear()+'-'+_pad(_d.getMonth()+1)+'-'+_pad(_d.getDate())+' '+_pad(_d.getHours())+_pad(_d.getMinutes());
+  // Chrome keeps this folder structure under Downloads; other browsers save a flat file with the same name.
+  a.download = `NPOT Json Backups (keep these)/${_w.y}-W${_w.w}/NPOT backup ${_w.y}-W${_w.w} ${_stamp}.json`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -19773,24 +20346,28 @@ function useBackupPrefsTick() {
 function BackupStatusPill() {
   useBackupPrefsTick();
   const days = daysSinceLastExport();
-  let cloudOk = false;
-  try { const _ls = localStorage.getItem('ot-sb-last-sync'); const _f = parseInt(localStorage.getItem('ot-sb-fail')||'0',10); if (_ls && _f < 3 && (Date.now()-new Date(_ls).getTime())/60000 < 2880) cloudOk = true; } catch(e){}
-  let bg, label;
-  if (cloudOk)                             { bg = '#4A7C6F'; label = '\u2601 Cloud synced'; }
-  else if (days === null)                  { bg = '#B5573E'; label = 'No backup yet'; }
-  else if (days < BACKUP_SOFT_NAG_DAYS)    { bg = '#4A7C6F'; label = days === 0 ? 'Backed up today' : `Backup ${days}d ago`; }
-  else if (days < BACKUP_HARD_NAG_DAYS)    { bg = '#D4821A'; label = `Backup ${days}d ago`; }
-  else                                     { bg = '#B5573E'; label = `Backup ${days}d old`; }
+  let cloudOk = false, lastSync = null, fails = 0;
+  try { lastSync = localStorage.getItem('ot-sb-last-sync'); fails = parseInt(localStorage.getItem('ot-sb-fail')||'0',10); if (lastSync && fails < 3 && (Date.now()-new Date(lastSync).getTime())/60000 < 2880) cloudOk = true; } catch(e){}
+  const _ago = (iso) => { const m=Math.round((Date.now()-new Date(iso).getTime())/60000); if(m<1)return 'just now'; if(m<60)return m+'m ago'; const h=Math.round(m/60); if(h<24)return h+'h ago'; return Math.round(h/24)+'d ago'; };
+  let bg, top, sub = null;
+  if (fails >= 3)                          { bg = '#B5573E'; top = '\u26A0 Sync failing'; sub = 'open Cloud Sync'; }
+  else if (cloudOk)                        { bg = '#4A7C6F'; top = '\u2601 Cloud synced'; sub = lastSync ? _ago(lastSync) : null; }
+  else if (days === null)                  { bg = '#B5573E'; top = 'No backup yet'; }
+  else if (days < BACKUP_SOFT_NAG_DAYS)    { bg = '#4A7C6F'; top = days === 0 ? '\u2601 Backed up today' : ('Backup ' + days + 'd ago'); }
+  else if (days < BACKUP_HARD_NAG_DAYS)    { bg = '#D4821A'; top = 'Backup ' + days + 'd ago'; }
+  else                                     { bg = '#B5573E'; top = 'Backup ' + days + 'd old'; }
   return (
-    <div title="Time since your last JSON export. Click Export to refresh." style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'3px 9px', background:bg, color:'white', borderRadius:10, fontSize:11, fontWeight:600, whiteSpace:'nowrap', lineHeight:1.4 }}>
-      <span style={{ width:6, height:6, background:T.card, borderRadius:'50%', opacity:0.9 }}></span>
-      {label}
+    <div title={cloudOk ? ('Encrypted cloud backup \u2014 last synced ' + (lastSync ? new Date(lastSync).toLocaleString('en-GB') : '')) : 'Cloud sync + local backup status'} style={{ display:'inline-flex', flexDirection:'column', alignItems:'flex-start', justifyContent:'center', padding:'2px 10px', background:bg, color:'white', borderRadius:10, whiteSpace:'nowrap', lineHeight:1.1 }}>
+      <span style={{ fontSize:11, fontWeight:700 }}>{top}</span>
+      {sub && <span style={{ fontSize:9, fontWeight:500, opacity:0.85, marginTop:1 }}>{sub}</span>}
     </div>
   );
 }
 
 function BackupBanner({ data, addToast }) {
   useBackupPrefsTick();
+  // Cloud-aware: if Supabase sync is active and recent, don't nag about local file export.
+  try { const _ls = localStorage.getItem('ot-sb-last-sync'); const _f = parseInt(localStorage.getItem('ot-sb-fail')||'0',10); if (_ls && _f < 3 && (Date.now()-new Date(_ls).getTime())/60000 < 2880) return null; } catch(e){}
   const days = daysSinceLastExport();
   const prefs = getBackupPrefs();
   const todayStr = today();
@@ -19869,7 +20446,7 @@ function FileBackupSection({ data, addToast }) {
     <div style={{ marginBottom:20 }}>
       <h3 style={{ fontSize:13, fontWeight:700, color:T.ink, margin:'0 0 8px', textTransform:'uppercase', letterSpacing:'0.04em' }}>Backup to file <span style={{ background:T.sage, color:'white', fontSize:11, padding:'2px 6px', borderRadius:8, marginLeft:6, letterSpacing:0 }}>RECOMMENDED</span></h3>
       <p style={{ fontSize:13, color:T.inkMid, margin:'0 0 12px', lineHeight:1.5 }}>
-        Saves an unencrypted copy of all your data to your Downloads folder. This is the only backup that survives a forgotten password — keep it safe (iCloud, Dropbox, email).
+        Saves an unencrypted copy of all your data into <strong>Downloads → NPOT Json Backups (keep these) → (week number)</strong>. This is the only backup that survives a forgotten password. <strong>Keep every file — never delete them.</strong> Better to have lots of old copies than to lose the one you need. (Tip: point your Downloads at iCloud/Dropbox so they're safe off-device.)
       </p>
       <div style={{ background:statusBg, border:`1px solid ${statusBorder}`, borderRadius:8, padding:'12px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, marginBottom:10, flexWrap:'wrap' }}>
         <div style={{ fontSize:13, color:T.ink, fontWeight:600, flex:'1 1 200px' }}>{statusText}</div>
@@ -19884,7 +20461,7 @@ function FileBackupSection({ data, addToast }) {
         />
         <div style={{ flex:1 }}>
           <div style={{ fontWeight:600, color:T.ink }}>Auto-backup when overdue</div>
-          <div style={{ fontSize:11, color:T.inkLight, marginTop:2 }}>If more than 7 days have passed since your last export, automatically save a fresh copy to Downloads when you log in.</div>
+          <div style={{ fontSize:11, color:T.inkLight, marginTop:2 }}>If a day or more has passed since your last export, automatically save a fresh copy to Downloads the next time you log in — so you always have a recent file backup.</div>
         </div>
       </label>
     </div>
@@ -19910,7 +20487,7 @@ function BackupWelcomeModal({ onClose, cloudOn }) {
             <li>If anything goes wrong, click <strong>Import</strong> to restore from any saved file.</li>
           </ul>
           <p style={{ background:T.sagePale, border:`1px solid ${T.sandBorder}`, borderRadius:8, padding:'10px 12px', margin:'12px 0', fontSize:12 }}>
-            <strong>Auto-backup is ON.</strong> If it's been more than 7 days since your last export, the dashboard will automatically save a fresh copy to your Downloads folder next time you log in. You'll see a banner at the top reminding you when a backup is overdue.
+            <strong>Auto-backup is ON.</strong> If it's been a day or more since your last export, the dashboard will automatically save a fresh copy to your Downloads folder next time you log in. You'll see a banner at the top reminding you when a backup is overdue.
           </p>
           <p style={{ fontSize:11, color:T.inkLight, margin:0 }}>You can turn auto-backup off in the <strong>Backups</strong> dialog (top right). Tip: connecting <strong>Cloud Sync</strong> (Profile &amp; Settings) backs everything up automatically.</p>
         </>)}
@@ -20222,8 +20799,8 @@ function ProfileSettingsModal({ data, updateData, addToast, onClose, onLock, ini
   };
 
   // ── Supabase sync state (Cloud Sync tab) ──
-  const [sbUrl, setSbUrl] = useState(s.supabaseUrl || '');
-  const [sbKey, setSbKey] = useState(s.supabaseKey || '');
+  const [sbUrl, setSbUrl] = useState(s.supabaseUrl || (window.__DEMO_AVAILABLE__ ? '' : SB_URL_DEFAULT));
+  const [sbKey, setSbKey] = useState(s.supabaseKey || (window.__DEMO_AVAILABLE__ ? '' : SB_KEY_DEFAULT));
   const [sbSyncing, setSbSyncing] = useState(false);
   const [sbStatus, setSbStatus] = useState(null);
   const [sbVersions, setSbVersions] = useState(null);
@@ -20431,7 +21008,7 @@ function ProfileSettingsModal({ data, updateData, addToast, onClose, onLock, ini
               <Field label="Practice phone"><Input value={form.practicePhone} onChange={e=>set('practicePhone', e.target.value)} placeholder="e.g. 07712 345678"/></Field>
             </div>
             <Field label="Website"><Input value={form.website} onChange={e=>set('website', e.target.value)} placeholder="e.g. www.example.co.uk"/></Field>
-            <Field label="getAddress.io API key (postcode → address lookup on the Add Client form)"><Input value={form.getAddressApiKey} onChange={e=>set('getAddressApiKey', e.target.value)} placeholder="Paste your free key — see getaddress.io"/></Field>
+            <div style={{ fontSize:11.5, color:T.inkLight, lineHeight:1.5 }}>📍 Postcode lookup on the Add Client form is now built in and free (postcodes.io) — no API key needed.</div>
             <div style={{ fontSize:12, color:T.inkLight, marginTop:-4 }}>Free tier = 20 lookups/day. Sign up at getaddress.io, create an API key (leave it unrestricted for a local file), and paste it here.</div>
             <Field label="Practice logo on documents">
               <label style={{ display:'flex', alignItems:'center', gap:10, fontSize:13, color:T.ink, cursor:'pointer' }}>
@@ -20599,16 +21176,21 @@ function ProfileSettingsModal({ data, updateData, addToast, onClose, onLock, ini
             {!isMSConfigured() && canUseModernAuth() && (
               <div style={{ marginTop:20, borderTop:'1px solid '+T.sandBorder, paddingTop:16 }}>
                 <div style={{ fontSize:13, fontWeight:600, color:T.ink, marginBottom:8 }}>Microsoft 365 Sign-in</div>
-                <div style={{ fontSize:12, color:T.inkMid, marginBottom:10 }}>Enter your Azure App Client ID to enable Sign in with Microsoft.</div>
-                <input placeholder="Client ID" id="ms-client-id-settings" style={{ width:'100%', padding:'8px 10px', border:'1px solid '+T.sandBorder, borderRadius:6, fontSize:12, marginBottom:6, fontFamily:'monospace' }}/>
-                <Btn onClick={()=>{ const v=document.getElementById('ms-client-id-settings')?.value?.trim(); if(v){saveMSConfig({clientId:v});addToast('Microsoft sign-in configured');} }}>Save Client ID</Btn>
+                <div style={{ fontSize:12, color:T.inkMid, marginBottom:10 }}>Enter your Azure App <strong>Client ID</strong> and <strong>Tenant (Directory) ID</strong> to enable Sign in with Microsoft.</div>
+                <input placeholder="Client ID (Application ID)" id="ms-client-id-settings" style={{ width:'100%', padding:'8px 10px', border:'1px solid '+T.sandBorder, borderRadius:6, fontSize:12, marginBottom:6, fontFamily:'monospace' }}/>
+                <input placeholder="Tenant ID (Directory ID)" id="ms-tenant-id-settings" style={{ width:'100%', padding:'8px 10px', border:'1px solid '+T.sandBorder, borderRadius:6, fontSize:12, marginBottom:6, fontFamily:'monospace' }}/>
+                <Btn onClick={()=>{ const v=document.getElementById('ms-client-id-settings')?.value?.trim(); const t=document.getElementById('ms-tenant-id-settings')?.value?.trim(); if(v){saveMSConfig({clientId:v, tenantId:t||undefined});addToast('Microsoft sign-in configured');} else { addToast('Enter the Client ID','error'); } }}>Save</Btn>
               </div>
             )}
           </div>
         ) || tab === 'sync' && (
         <div>
           {sectionTitle('☁ Supabase Cloud Sync', 'Store a backup of your data in Supabase so it persists across devices and browser clears. Your data is always saved locally first — Supabase is an additional safety net.')}
-          {!s.supabaseUrl && (<div style={{ background:T.sagePale, border:`1px solid ${T.sandBorder}`, borderRadius:10, padding:'16px 18px', marginBottom:16 }}>
+          {!s.supabaseUrl && !window.__DEMO_AVAILABLE__ && (<div style={{ background:T.sagePale, border:`1px solid ${T.sandBorder}`, borderRadius:10, padding:'16px 18px', marginBottom:16 }}>
+            <div style={{ fontSize:13, fontWeight:700, color:T.ink, marginBottom:6 }}>☁ Your practice cloud is pre-filled</div>
+            <p style={{ fontSize:12, color:T.inkMid, lineHeight:1.6, margin:0 }}>The connection details below are already filled in for your practice \u2014 nothing to set up. Just click <strong>Connect &amp; Test</strong>, then <strong>\u2B07 Restore from cloud backup</strong> to pull everything onto this device.</p>
+          </div>)}
+          {!s.supabaseUrl && window.__DEMO_AVAILABLE__ && (<div style={{ background:T.sagePale, border:`1px solid ${T.sandBorder}`, borderRadius:10, padding:'16px 18px', marginBottom:16 }}>
             <div style={{ fontSize:13, fontWeight:700, color:T.ink, marginBottom:8 }}>Set up in 4 steps (free tier available)</div>
             <ol style={{ fontSize:12, color:T.inkMid, lineHeight:2, margin:0, paddingLeft:18 }}>
               <li>Go to <a href="https://supabase.com" target="_blank" rel="noopener" style={{ color:T.sage }}>supabase.com</a> and create a free project</li>
@@ -20756,7 +21338,7 @@ function ExportImport({ data, updateData, addToast }) {
 
 // ── HelpChatView ─────────────────────────────────────────────────────────────
 
-function HelpChatView({ data, addToast, compact }) {
+function HelpChatView({ data, updateData, addToast, compact }) {
   const [apiKey, setApiKey] = React.useState(() => localStorage.getItem('ot_claude_key') || '');
   const [keyInput, setKeyInput] = React.useState('');
   const [showKeySetup, setShowKeySetup] = React.useState(!localStorage.getItem('ot_claude_key'));
@@ -20769,13 +21351,19 @@ function HelpChatView({ data, addToast, compact }) {
   const bottomRef = React.useRef(null);
 
   React.useEffect(() => { bottomRef.current?.scrollIntoView({ behavior:'smooth' }); }, [messages]);
+  React.useEffect(() => {
+    const k = data && data.settings && data.settings.claudeApiKey;
+    if (k && k.trim() && k.trim() !== apiKey) { setApiKey(k.trim()); setShowKeySetup(false); try { localStorage.setItem('ot_claude_key', k.trim()); } catch(e){} }
+  }, [data && data.settings && data.settings.claudeApiKey]);
 
   const saveKey = () => {
     if (!keyInput.trim().startsWith('sk-')) { addToast('API key should start with sk-', 'error'); return; }
-    localStorage.setItem('ot_claude_key', keyInput.trim());
-    setApiKey(keyInput.trim());
+    const k = keyInput.trim();
+    localStorage.setItem('ot_claude_key', k);
+    setApiKey(k);
     setShowKeySetup(false);
-    addToast('API key saved');
+    if (typeof updateData === 'function') updateData(d => ({ ...d, settings: { ...(d.settings||{}), claudeApiKey: k } }));
+    addToast('API key saved \u2014 it will sync to your other devices');
   };
 
   const clearKey = () => {
@@ -20783,6 +21371,7 @@ function HelpChatView({ data, addToast, compact }) {
     setApiKey('');
     setKeyInput('');
     setShowKeySetup(true);
+    if (typeof updateData === 'function') updateData(d => ({ ...d, settings: { ...(d.settings||{}), claudeApiKey: '' } }));
   };
 
   const sendMessage = async (text) => {
@@ -21116,6 +21705,18 @@ function AnnualSummaryView({ data }) {
 
 // ── TemplatesView — edit all report boilerplate from one place ───────────────
 function BpField({ id, label, rows, hint, val, onChange, onReset, def }) {
+  const [bpBusy, setBpBusy] = React.useState(false);
+  const [bpErr, setBpErr] = React.useState('');
+  const polishBp = async () => {
+    setBpBusy(true); setBpErr('');
+    try {
+      const cur = val || def || '';
+      const prompt = 'You are a UK occupational therapist refining standard report boilerplate. Refine the following "' + label + '" text so it reads as clear, warm, professional clinical prose in British English. Keep any placeholders EXACTLY as written: [NAME], [POSS], [SUBJ], [OBJ]. This is generic template text reused for every report, so do NOT invent any child-specific details. Return only the improved text, no preamble.\n\nCurrent text:\n' + (cur || '(empty - write a suitable concise professional paragraph for this section)');
+      const text = await window.claude.complete(prompt, { model:'claude-sonnet-4-6', maxTokens:900 });
+      if (text && String(text).trim()) onChange(String(text).trim());
+    } catch(e) { setBpErr(e.message==='NO_API_KEY' ? 'Add your AI key in Annie first' : 'AI failed'); }
+    setBpBusy(false);
+  };
   return (
     <div id={'bp-field-'+id} style={{marginBottom:22,paddingBottom:22,borderBottom:'1px solid '+T.sandBorder}}>
       <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:6}}>
@@ -21123,7 +21724,11 @@ function BpField({ id, label, rows, hint, val, onChange, onReset, def }) {
           <div style={{fontSize:13,fontWeight:600,color:T.ink,marginBottom:2}}>{label}</div>
           {hint && <div style={{fontSize:11,color:T.inkLight}}>{hint}</div>}
         </div>
-        <button onClick={onReset} title="Reset to default" style={{flexShrink:0,fontSize:11,color:T.inkMid,background:'none',border:'1px solid '+T.sandBorder,borderRadius:4,padding:'3px 10px',cursor:'pointer',marginLeft:14,whiteSpace:'nowrap'}}>↺ Reset</button>
+        <div style={{flexShrink:0,display:'flex',alignItems:'center',gap:8,marginLeft:14}}>
+          {bpErr && <span style={{fontSize:10,color:T.amber,fontWeight:600}}>{bpErr}</span>}
+          <button onClick={polishBp} disabled={bpBusy} title="AI refine this text" style={{fontSize:11,color:T.sage,background:T.card,border:'1px solid '+T.sage,borderRadius:20,padding:'3px 11px',cursor:'pointer',whiteSpace:'nowrap',fontWeight:600}}>{bpBusy?'\u2026':'\u2728'} Refine</button>
+          <button onClick={onReset} title="Reset to default" style={{fontSize:11,color:T.inkMid,background:'none',border:'1px solid '+T.sandBorder,borderRadius:4,padding:'3px 10px',cursor:'pointer',whiteSpace:'nowrap'}}>↺ Reset</button>
+        </div>
       </div>
       <textarea
         rows={rows||4}
@@ -21202,6 +21807,22 @@ function TemplatesView({ data, updateData, addToast }) {
   };
   const eyoBtnMini = { fontSize:12, background:T.card, border:'1px solid '+T.sandBorder, borderRadius:6, padding:'4px 9px', cursor:'pointer', color:T.inkMid };
 
+  // Session Note — structural editor working copy
+  const [snForm, setSnForm] = React.useState(() => { const t = (data.settings && data.settings.sessionNoteTemplate); return (t && Array.isArray(t.fields) && t.fields.length) ? JSON.parse(JSON.stringify(t)) : JSON.parse(JSON.stringify(SESSION_NOTE_TEMPLATE_DEFAULTS)); });
+  const snMut = (fn) => { setSnForm(f => { const c = JSON.parse(JSON.stringify(f)); fn(c); return c; }); setDirty(true); };
+  const snSet = (i,k,v) => snMut(c => { c.fields[i][k] = (k==='rows') ? (parseInt(v)||3) : v; });
+  const snAdd = () => snMut(c => { c.fields.push({ id:'sn_'+uid(), label:'New heading', prompt:'', rows:4, boilerplate:'' }); });
+  const snDel = (i) => { if (snForm.fields.length<=1) { addToast('Keep at least one heading \u2014 edit or rename it instead','error'); return; } snMut(c => { c.fields.splice(i,1); }); };
+  const snMove = (i,dir) => snMut(c => { const t=c.fields[i]; c.fields.splice(i,1); c.fields.splice(i+dir,0,t); });
+  const snReset = () => { if(!window.confirm('Reset the Session Note template to the built-in default? Your custom headings, prompts and boilerplate will be lost.')) return; setSnForm(JSON.parse(JSON.stringify(SESSION_NOTE_TEMPLATE_DEFAULTS))); setDirty(true); };
+  const [emailForm, setEmailForm] = React.useState(() => {
+    const t = (data.settings && data.settings.emailTemplates) || {};
+    const mk = (k) => ({ subject: (t[k]&&t[k].subject) || EMAIL_TEMPLATE_DEFAULTS[k].subject, body: (t[k]&&t[k].body) || EMAIL_TEMPLATE_DEFAULTS[k].body });
+    return { intake: mk('intake'), invoice: mk('invoice') };
+  });
+  const emailSet = (k, field, v) => { setEmailForm(f => ({ ...f, [k]: { ...f[k], [field]: v } })); setDirty(true); };
+  const emailReset = (k) => { setEmailForm(f => ({ ...f, [k]: { subject:EMAIL_TEMPLATE_DEFAULTS[k].subject, body:EMAIL_TEMPLATE_DEFAULTS[k].body } })); setDirty(true); };
+
   React.useEffect(() => {
     if (window.__bp_scroll_target) {
       var target = window.__bp_scroll_target;
@@ -21231,6 +21852,8 @@ function TemplatesView({ data, updateData, addToast }) {
       boilerplate:   newBp,
       marieTemplate: { ...(d.settings&&d.settings.marieTemplate||{}), ...marieForm },
       eyoTemplate:   eyoForm,
+      sessionNoteTemplate: snForm,
+      emailTemplates: emailForm,
     }}));
     addToast('Templates saved');
     setDirty(false);
@@ -21251,7 +21874,7 @@ function TemplatesView({ data, updateData, addToast }) {
 
       {/* Tab bar */}
       <div style={{display:'flex',gap:0,marginBottom:28,borderBottom:'1px solid '+T.sandBorder}}>
-        {[['core','📋 Core Report Text'],['spm2','🧠 SPM-2 Subscales'],['marie','💜 Marie Template'],['eyo','🧸 Observation Form']].map(([k,l]) => (
+        {[['core','📋 Core Report Text'],['spm2','🧠 SPM-2 Subscales'],['marie','💜 Marie Template'],['eyo','🧸 Observation Form'],['session','📝 Session Note'],['emails','✉️ Emails']].map(([k,l]) => (
           <button key={k} onClick={()=>setTab(k)} style={{padding:'9px 20px',background:'none',border:'none',borderBottom:tab===k?'3px solid '+T.sage:'3px solid transparent',color:tab===k?T.sage:T.inkMid,fontWeight:tab===k?700:400,cursor:'pointer',fontSize:13,marginBottom:-1,transition:'all 0.15s'}}>
             {l}
           </button>
@@ -21391,6 +22014,62 @@ function TemplatesView({ data, updateData, addToast }) {
         </div>
       )}
 
+      {tab === 'session' && (
+        <div>
+          <div style={{background:T.sagePale,border:'1px solid '+T.sandBorder,borderRadius:8,padding:'10px 14px',fontSize:12,color:T.inkMid,marginBottom:18,lineHeight:1.6}}>
+            <strong>📝 Session Note</strong> — the headings, prompts and optional boilerplate for every <em>standard</em> session note (observations use the 🧸 form instead). Reorder, rename, remove or add headings. <strong>Boilerplate</strong> pre-fills a heading on every new note as an editable starting point. Changes apply to notes opened after saving — text already written in saved notes is kept.
+          </div>
+          <div style={{display:'flex',justifyContent:'flex-end',marginBottom:14}}>
+            <button onClick={snReset} style={{fontSize:11,color:T.inkMid,background:'none',border:'1px solid '+T.sandBorder,borderRadius:4,padding:'4px 12px',cursor:'pointer'}}>↺ Reset to default</button>
+          </div>
+          {snForm.fields.map((f,i) => (
+            <div key={f.id} style={{border:'1px solid '+T.sandBorder,borderRadius:10,marginBottom:14,overflow:'hidden'}}>
+              <div style={{display:'flex',alignItems:'center',gap:8,background:T.sagePale,padding:'10px 14px',borderBottom:'1px solid '+T.sandBorder}}>
+                <span style={{fontSize:10,fontWeight:700,color:T.inkLight,textTransform:'uppercase',letterSpacing:'0.05em',flexShrink:0}}>Heading</span>
+                <input value={f.label} onChange={e=>snSet(i,'label',e.target.value)}
+                  style={{flex:1,fontSize:13,fontWeight:700,color:T.ink,padding:'6px 10px',border:'1px solid '+T.sandBorder,borderRadius:6,background:T.card,outline:'none',fontFamily:'inherit'}}/>
+                <button onClick={()=>snMove(i,-1)} disabled={i===0} title="Move up" style={{...eyoBtnMini,opacity:i===0?0.4:1}}>↑</button>
+                <button onClick={()=>snMove(i,1)} disabled={i===snForm.fields.length-1} title="Move down" style={{...eyoBtnMini,opacity:i===snForm.fields.length-1?0.4:1}}>↓</button>
+                <button onClick={()=>{ if(window.confirm('Delete the \u201c'+f.label+'\u201d heading?')) snDel(i); }} title="Delete heading" style={{...eyoBtnMini,color:T.red}}>🗑</button>
+              </div>
+              <div style={{padding:'12px 14px'}}>
+                <textarea value={f.prompt||''} onChange={e=>snSet(i,'prompt',e.target.value)} rows={2} placeholder="Prompt — the grey hint shown under this heading"
+                  style={{width:'100%',fontSize:11.5,color:T.inkMid,padding:'6px 10px',border:'1px solid '+T.sandBorder,borderRadius:6,background:T.sandLight,outline:'none',resize:'vertical',fontFamily:'inherit',lineHeight:1.5,marginBottom:8}}/>
+                <textarea value={f.boilerplate||''} onChange={e=>snSet(i,'boilerplate',e.target.value)} rows={2} placeholder="Boilerplate (optional) — pre-filled text for every new note"
+                  style={{width:'100%',fontSize:11.5,color:T.ink,padding:'6px 10px',border:'1px solid '+T.sandBorder,borderRadius:6,background:T.sandLight,outline:'none',resize:'vertical',fontFamily:'inherit',lineHeight:1.5}}/>
+              </div>
+            </div>
+          ))}
+          <button onClick={snAdd} style={{fontSize:13,fontWeight:600,color:T.sageText,background:T.sageLight,border:'1px dashed '+T.sage,borderRadius:8,padding:'10px 16px',cursor:'pointer',width:'100%'}}>+ Add new heading</button>
+        </div>
+      )}
+
+      {tab === 'emails' && (
+        <div>
+          <div style={{background:T.sagePale,border:'1px solid '+T.sandBorder,borderRadius:8,padding:'10px 14px',fontSize:12,color:T.inkMid,marginBottom:18,lineHeight:1.6}}>
+            <strong>✉️ Email templates</strong> — the wording used whenever you draft an email from the app, so every message goes out in your words. The bits in [SQUARE BRACKETS] are placeholders, filled in automatically when you send.
+          </div>
+          {[['intake','Intake forms email','Used by “Email both forms to a client” in the Intake tab.','[NAME], [CONSENT_LINK], [QUESTIONNAIRE_LINK], [SENDER]'],
+            ['invoice','Invoice email','Used by the “Email” button on an invoice.','[NAME], [INVOICE_NO], [AMOUNT], [DUE], [SENDER]']].map(([k,title,use,ph]) => (
+            <div key={k} style={{border:'1px solid '+T.sandBorder,borderRadius:10,marginBottom:18,overflow:'hidden'}}>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,background:T.sagePale,padding:'10px 14px',borderBottom:'1px solid '+T.sandBorder}}>
+                <span style={{fontSize:13,fontWeight:700,color:T.ink}}>{title}</span>
+                <button onClick={()=>emailReset(k)} style={{fontSize:11,color:T.inkMid,background:'none',border:'1px solid '+T.sandBorder,borderRadius:4,padding:'3px 10px',cursor:'pointer'}}>↺ Reset</button>
+              </div>
+              <div style={{padding:'12px 14px'}}>
+                <div style={{fontSize:11,color:T.inkLight,marginBottom:10,lineHeight:1.5}}>{use} <strong>Placeholders:</strong> {ph}</div>
+                <div style={{fontSize:11,fontWeight:700,color:T.inkMid,marginBottom:3}}>Subject</div>
+                <input value={emailForm[k].subject} onChange={e=>emailSet(k,'subject',e.target.value)}
+                  style={{width:'100%',fontSize:12.5,color:T.ink,padding:'7px 10px',border:'1px solid '+T.sandBorder,borderRadius:6,background:T.sandLight,outline:'none',fontFamily:'inherit',marginBottom:10,boxSizing:'border-box'}}/>
+                <div style={{fontSize:11,fontWeight:700,color:T.inkMid,marginBottom:3}}>Body</div>
+                <textarea value={emailForm[k].body} onChange={e=>emailSet(k,'body',e.target.value)} rows={9}
+                  style={{width:'100%',fontSize:12.5,color:T.ink,padding:'8px 10px',border:'1px solid '+T.sandBorder,borderRadius:6,background:T.sandLight,outline:'none',resize:'vertical',fontFamily:'inherit',lineHeight:1.6,boxSizing:'border-box'}}/>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div style={{marginTop:16,display:'flex',justifyContent:'flex-end'}}>
         <Btn onClick={save}>{dirty?'💾 Save Changes':'✓ All Saved'}</Btn>
       </div>
@@ -21404,6 +22083,7 @@ const NAV_ITEMS = [
   { key:'calendar', label:'Calendar', icon:Calendar },
   { key:'sessions', label:'Sessions', icon:ClipboardList },
   { key:'comms', label:'Comms', icon:MessageSquare },
+  { key:'intake', label:'Intake', icon:Mail },
   { key:'documents', label:'Documents', icon:FileText },
   { key:'finances', label:'Finances', icon:PoundSterling },
   { key:'focus', label:'Focus', icon:Activity },
@@ -22167,7 +22847,7 @@ function FocusView({ data, updateData }) {
   );
 }
 
-function TaxView({ data, updateData }) {
+function TaxView({ data, updateData, addToast }) {
   const taxSettings = data.settings?.taxSettings || { nhsSalary: 35200, taxYear: '2025-26' };
   const [nhsSalary, setNhsSalary] = useState(taxSettings.nhsSalary ?? 35200);
   const [taxYear, setTaxYear] = useState(taxSettings.taxYear ?? '2025-26');
@@ -22401,7 +23081,7 @@ function FinancesView({ data, updateData, addToast, setView, initialTab='invoice
     mileage:  <MileageView {...props}/>,
     expenses: <ExpensesView {...props}/>,
     income:   <IncomeSummaryView data={data}/>,
-    tax:      <TaxView data={data} updateData={updateData}/>,
+    tax:      <TaxView {...props}/>,
   };
   return (
     <div style={{ display:'flex', flexDirection:'column', flex:1, minHeight:0 }}>
@@ -22738,7 +23418,7 @@ function GlobalSearch({ data, setView, onNavigate }) {
           label:`${client?.name||'Unknown'} — ${fmtShort(s.date)}`,
           sub:`${s.type||''}${s.formType==='eyo'?' · 🧸 Observation Form':''} · ${s.location||''}${s.dna?' · DNA':''}`,
           context: note && fuzzyMatch(noteText, q) ? 'Found in session note' : null,
-          action:'calendar',
+          action: s.clientId ? 'clients' : 'calendar', clientId: s.clientId || undefined,
         });
       }
     });
@@ -22859,7 +23539,78 @@ function GlobalSearch({ data, setView, onNavigate }) {
       }
     });
 
-    return hits.sort((a,b) => a.priority - b.priority).slice(0, 15);
+    (data.goals||[]).forEach(g => {
+      const client = (data.clients||[]).find(c=>c.id===g.clientId);
+      const gtext = g.goal || g.goals || g.text || g.title || g.description || g.goalText || '';
+      const textFields = [client?.name, gtext, g.category, g.status, g.notes, g.target].filter(Boolean).join(' ');
+      if (fuzzyMatch(textFields, q)) {
+        hits.push({
+          type:'Goal', icon:'🎯', priority:2,
+          label: (client?.name ? client.name + ' — ' : '') + (gtext ? String(gtext).slice(0,60) : 'Goal'),
+          sub: [g.status==='achieved'?'✓ Achieved':'In progress', g.category, g.targetDate?('target '+fmtShort(g.targetDate)):''].filter(Boolean).join(' · '),
+          action:'clients', clientId: g.clientId,
+        });
+      }
+    });
+
+    (data.reminders||[]).forEach(r => {
+      if (fuzzyMatch(r.text||'', q)) {
+        hits.push({
+          type:'Reminder', icon:'✅', priority:5,
+          label: r.text,
+          sub: [r.done?'Done':'To do', r.due?('due '+fmtShort(r.due)):''].filter(Boolean).join(' · '),
+          action:'home',
+        });
+      }
+    });
+
+    Object.entries(data.stickyNotes||{}).forEach(([cid, txt]) => {
+      if (txt && fuzzyMatch(txt, q)) {
+        const client = (data.clients||[]).find(c=>c.id===cid);
+        hits.push({
+          type:'Note', icon:'🗒️', priority:4,
+          label: client?.name ? (client.name + ' — sticky note') : 'Sticky note',
+          sub: String(txt).slice(0,80),
+          action:'clients', clientId: cid,
+        });
+      }
+    });
+    if (data.braindump && data.braindump.current && fuzzyMatch(data.braindump.current, q)) {
+      hits.push({ type:'Note', icon:'🗒️', priority:6, label:'Brain-dump (Focus)', sub:String(data.braindump.current).slice(0,80), action:'focus' });
+    }
+
+    // Quick navigation — command-palette style jumps (shown at the top)
+    const ql = q.toLowerCase();
+    const NAV_TARGETS = [
+      {kw:['home','dashboard'], action:'home', label:'Home', icon:'🏠'},
+      {kw:['clients','caseload'], action:'clients', label:'Clients', icon:'👥'},
+      {kw:['calendar','diary','schedule'], action:'calendar', label:'Calendar', icon:'📅'},
+      {kw:['sessions'], action:'sessions', label:'Sessions', icon:'📋'},
+      {kw:['comms','communication'], action:'comms', label:'Comms', icon:'💬'},
+      {kw:['intake','referral'], action:'intake', label:'Intake', icon:'📨'},
+      {kw:['documents','files'], action:'documents', label:'Documents', icon:'📁'},
+      {kw:['invoices','invoice','billing'], action:'invoices', label:'Invoices', icon:'💷'},
+      {kw:['mileage','journeys','travel'], action:'mileage', label:'Mileage', icon:'🚗'},
+      {kw:['expenses'], action:'expenses', label:'Expenses', icon:'🧾'},
+      {kw:['income','earnings'], action:'income', label:'Income', icon:'📈'},
+      {kw:['tax','hmrc'], action:'tax', label:'Tax', icon:'🧮'},
+      {kw:['finances','finance'], action:'finances', label:'Finances', icon:'💷'},
+      {kw:['focus','pomodoro','timer'], action:'focus', label:'Focus', icon:'⏱'},
+      {kw:['cpd'], action:'cpd', label:'CPD', icon:'📚'},
+      {kw:['supervision'], action:'supervision', label:'Supervision', icon:'🛡️'},
+      {kw:['library','phrases','resources','reference'], action:'phraselib', label:'Library', icon:'📖'},
+      {kw:['templates','template','boilerplate'], action:'templates', label:'Templates', icon:'⚙️'},
+      {kw:['guide','help'], action:'userguide', label:'User Guide', icon:'❓'},
+    ];
+    let cmdN = 0;
+    NAV_TARGETS.forEach(t => {
+      if (cmdN < 4 && t.kw.some(k => k.indexOf(ql) === 0 || ql.indexOf(k) >= 0)) {
+        hits.push({ type:'Jump', icon:t.icon, priority:0, label:'Go to ' + t.label, sub:'Open the ' + t.label + ' section', action:t.action });
+        cmdN++;
+      }
+    });
+
+    return hits.sort((a,b) => a.priority - b.priority).slice(0, 18);
   }, [query, data]);
 
   React.useEffect(() => { setFocused(0); }, [results]);
@@ -22881,6 +23632,8 @@ function GlobalSearch({ data, setView, onNavigate }) {
   const TYPE_COLOR = {
     Client:'#4A7C6F', Session:'#7B6FA0', Invoice:'#D4821A',
     Journey:'#2E7D9E', Expense:'#B5451B', CPD:'#2D6A4F', Supervision:'#5B4E8A',
+    Comms:'#0E7490', Document:'#6D28D9', Waiting:'#92400E',
+    Goal:'#15803D', Reminder:'#B45309', Note:'#7C5E10', Jump:'#4A7C6F',
   };
 
   const q = query.trim();
@@ -22931,7 +23684,7 @@ function GlobalSearch({ data, setView, onNavigate }) {
                 {results.length} result{results.length!==1?'s':''} — press ↑↓ to navigate, ↵ to go
               </div>
               {results.map((hit, i) => (
-                <div key={`${hit.type}-${hit.id || hit.name}-${i}`} onClick={()=>selectResult(hit)}
+                <div key={`${hit.type}-${hit.id || hit.name}-${i}`} ref={el=>{ if(i===focused && el && el.scrollIntoView) el.scrollIntoView({block:'nearest'}); }} onClick={()=>selectResult(hit)}
                   style={{
                     display:'flex', alignItems:'flex-start', gap:10, padding:'9px 12px',
                     background: i===focused ? T.sagePale : T.card,
@@ -22955,6 +23708,19 @@ function GlobalSearch({ data, setView, onNavigate }) {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {open && q.length < 2 && (
+        <div ref={dropRef} style={{ position:'absolute', top:'calc(100% + 6px)', left:0, right:0, background:T.card, borderRadius:10, boxShadow:'0 8px 32px rgba(30,40,32,0.18)', border:`1px solid ${T.sandBorder}`, zIndex:500, overflow:'hidden' }}>
+          <div style={{ padding:'10px 14px 6px', fontSize:11, fontWeight:700, color:T.inkLight, textTransform:'uppercase', letterSpacing:'0.08em' }}>Search everything — or jump to</div>
+          <div style={{ display:'flex', flexWrap:'wrap', gap:6, padding:'4px 12px 12px' }}>
+            {[['clients','👥 Clients'],['calendar','📅 Calendar'],['sessions','📋 Sessions'],['invoices','💷 Invoices'],['intake','📨 Intake'],['documents','📁 Documents'],['cpd','📚 CPD'],['templates','⚙️ Templates']].map(([act,lbl])=>(
+              <button key={act} onClick={()=>{ setView(act); setQuery(''); setOpen(false); inputRef.current && inputRef.current.blur(); }}
+                style={{ fontSize:12, fontWeight:600, color:T.sageText, background:T.sageLight, border:`1px solid ${T.sandBorder}`, borderRadius:16, padding:'5px 12px', cursor:'pointer' }}>{lbl}</button>
+            ))}
+          </div>
+          <div style={{ padding:'8px 14px', borderTop:`1px solid ${T.sandBorder}40`, fontSize:11, color:T.inkLight, lineHeight:1.5 }}>Tip: search clients, session notes, invoices, journeys, expenses, goals, reminders, sticky notes, CPD and supervision — or type a section name to jump straight there.</div>
         </div>
       )}
     </div>
@@ -23277,6 +24043,42 @@ function App() {
       return next;
     });
   }, []);
+  // AI key sync: the key lives in the encrypted cloud blob (settings.claudeApiKey). When a device
+  // restores data that contains it, mirror it into localStorage so every AI path can use it — enter once, works everywhere.
+  React.useEffect(() => {
+    const sKey = ((data && data.settings && data.settings.claudeApiKey) || '').trim();
+    const lKey = (localStorage.getItem('ot_claude_key') || '').trim();
+    if (sKey && lKey !== sKey) {
+      // synced key is the source of truth -> mirror it down to this device
+      try { localStorage.setItem('ot_claude_key', sKey); } catch(e){}
+    } else if (!sKey && lKey) {
+      // a key was already pasted on this device before sync existed -> promote it into the synced settings
+      updateData(d => ({ ...d, settings: { ...(d.settings||{}), claudeApiKey: lKey } }));
+    }
+  }, [data]);
+  // Expose the effective Supabase creds so document files can stream to Supabase Storage (not the 5MB local blob).
+  React.useEffect(() => {
+    try { window.__SBDOC = { url: (data && data.settings && data.settings.supabaseUrl) || (typeof SB_URL_DEFAULT!=='undefined'?SB_URL_DEFAULT:''), key: (data && data.settings && data.settings.supabaseKey) || (typeof SB_KEY_DEFAULT!=='undefined'?SB_KEY_DEFAULT:'') }; } catch(e){}
+  }, [data && data.settings && data.settings.supabaseUrl, data && data.settings && data.settings.supabaseKey]);
+  // Background offloader: any document still held inline (base64) is encrypted and moved to Supabase Storage,
+  // then its local copy is dropped — so files don't count against the ~5MB browser cap. Runs only when cloud is available.
+  React.useEffect(() => {
+    if (!data || !(typeof window!=='undefined' && window.__SBDOC && window.__SBDOC.url && window.__SBDOC.key) || !_getCurrentKey()) return;
+    window.__docUploading = window.__docUploading || {};
+    const pending = (data.documents||[]).filter(d => d.base64 && !d.storagePath && !window.__docUploading[d.id]);
+    if (!pending.length) return;
+    pending.forEach(async (doc) => {
+      window.__docUploading[doc.id] = true;
+      try {
+        const path = await uploadDocToCloud(doc, doc.base64);
+        if (path) {
+          window.__docCache[doc.id] = doc.base64;
+          updateData(d => ({ ...d, documents: (d.documents||[]).map(x => x.id===doc.id ? { ...x, storagePath:path, base64:undefined } : x) }));
+        }
+      } catch(e){}
+      delete window.__docUploading[doc.id];
+    });
+  }, [data && data.documents]);
   // Force a flush before the page goes away or is hidden, so no edit is lost in the debounce window.
   React.useEffect(() => {
     const onHide = () => flushSave();
@@ -23324,8 +24126,8 @@ function App() {
     if (prefs.autoExportEnabled) {
       const days = daysSinceLastExport();
       const needs = days === null
-        ? (prefs.welcomedAt && (Date.now() - new Date(prefs.welcomedAt).getTime()) > BACKUP_SOFT_NAG_DAYS * 86400000)
-        : days >= BACKUP_SOFT_NAG_DAYS;
+        ? (prefs.welcomedAt && (Date.now() - new Date(prefs.welcomedAt).getTime()) > AUTO_BACKUP_DAYS * 86400000)
+        : days >= AUTO_BACKUP_DAYS;
       if (needs) {
         setTimeout(() => {
           try {
@@ -23388,6 +24190,7 @@ function App() {
     userguide: <UserGuideView />,
     summary: <AnnualSummaryView data={data}/>,
     templates: <TemplatesView {...props}/>,
+    intake: <IntakeView {...props}/>,
   };
 
   // v57: only show the DEMO banner while the loaded data is actually the sample set.
@@ -23440,22 +24243,10 @@ function App() {
             <div style={{ fontSize:11, opacity:0.75, lineHeight:1, color:'white' }}>{(data.settings && data.settings.jobTitle) || 'Occupational Therapist'}</div>
           </button>
         </div>
-        <div className="app-search" style={{ flex:1, maxWidth:380, minWidth:0, display:'flex' }}><GlobalSearch data={data} setView={setView} onNavigate={(clientId)=>{ setClientsNav({ tab:'clients', clientId }); setView('clients'); }}/></div>
+        <div className="app-search" style={{ position:'absolute', left:'50%', transform:'translateX(-50%)', width:'min(380px, 38vw)', minWidth:0, display:'flex', zIndex:1 }}><GlobalSearch data={data} setView={setView} onNavigate={(clientId)=>{ setClientsNav({ tab:'clients', clientId }); setView('clients'); }}/></div>
         <div className="app-actions" style={S.row12}>
           <ExportImport {...props}/>
           <NotificationBell data={data} setView={setView}/>
-          {data.settings?.supabaseUrl && (() => {
-            const _st = getSupabaseSyncStatus();
-            const _fail = _st.fails >= 3;
-            const _ago = (iso) => { const m=Math.round((Date.now()-new Date(iso).getTime())/60000); if(m<1)return 'just now'; if(m<60)return m+'m ago'; const h=Math.round(m/60); if(h<24)return h+'h ago'; return Math.round(h/24)+'d ago'; };
-            const _label = _fail ? '⚠ Sync failing' : (_st.lastSync ? ('☁ Synced ' + _ago(_st.lastSync)) : '☁ Cloud on');
-            return (
-              <span title={_fail ? 'Cloud sync has failed repeatedly — open Profile & Settings → Cloud Sync and press Update & Test' : ('Encrypted cloud backup. Last synced: ' + (_st.lastSync ? new Date(_st.lastSync).toLocaleString('en-GB') : 'not yet'))}
-                style={{ fontSize:11, fontWeight: _fail?700:400, color: _fail ? '#FFD7CE' : 'rgba(255,255,255,0.8)', display:'inline-flex', alignItems:'center', gap:4, whiteSpace:'nowrap' }}>
-                {_label}
-              </span>
-            );
-          })()}
           {/* ── Font size slider ── */}
           <div style={{ position:'relative' }}>
             <button onClick={()=>setShowFontSlider(s=>!s)} title="Adjust text size"
@@ -23590,7 +24381,7 @@ function App() {
             </div>
             {/* Chat body */}
             <div style={{ flex:1, overflow:'hidden', display:'flex', flexDirection:'column' }}>
-              <HelpChatView data={data} addToast={addToast} compact/>
+              <HelpChatView data={data} updateData={updateData} addToast={addToast} compact/>
             </div>
           </div>
         )}
