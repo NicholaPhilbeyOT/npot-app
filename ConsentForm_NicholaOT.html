@@ -1104,7 +1104,7 @@
     (async () => {
       try {
         const SB_URL = 'https://oufbdwbkurlepyskoooe.supabase.co';
-        const SB_KEY = 'sb_publishable_O8cX_cDWkZZKl4F-77T-2w_CeeTnRP0';
+        const SB_KEY = 'sb_publishable_O8cX_cDWkZZKI4F-77T-2w_CeeTnRP0';
         const kr = await fetch(SB_URL + '/rest/v1/intake_pubkey?id=eq.main&select=jwk', { headers:{ apikey: SB_KEY } });
         const krows = kr.ok ? await kr.json() : [];
         if (!krows.length || !krows[0].jwk) { alert('This form is not set up to receive submissions yet \u2014 please contact Nichola directly.'); return; }
@@ -1123,7 +1123,7 @@
 /* Live practice details — pulls current name/HCPC/email from the dashboard so this form stays in sync with Settings. Falls back to the defaults above if offline. */
 (function(){
   try {
-    var SB_URL='https://oufbdwbkurlepyskoooe.supabase.co', SB_KEY='sb_publishable_O8cX_cDWkZZKl4F-77T-2w_CeeTnRP0';
+    var SB_URL='https://oufbdwbkurlepyskoooe.supabase.co', SB_KEY='sb_publishable_O8cX_cDWkZZKI4F-77T-2w_CeeTnRP0';
     fetch(SB_URL+'/rest/v1/practice_info?id=eq.main&select=info',{headers:{apikey:SB_KEY}})
       .then(function(r){ return r.ok?r.json():[]; })
       .then(function(rows){
