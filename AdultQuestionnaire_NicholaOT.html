@@ -325,7 +325,8 @@
 
     <div class="submit-area">
       <button class="submit-btn" onclick="handleSubmit()">Submit Questionnaire</button>
-      <div class="submit-note">Responses are confidential and stored securely. Nichola will review this before the first appointment.</div>
+      <button type="button" class="copy-btn" onclick="saveMyCopy('Adult Questionnaire — your answers')" style="display:inline-block;margin-top:10px;margin-left:8px;background:#fff;color:#4A7C6F;border:1.5px solid #4A7C6F;border-radius:8px;padding:11px 20px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">📄 Save a copy of my answers</button>
+      <div class="submit-note">Responses are confidential and stored securely. Nichola will review this before the first appointment. It&rsquo;s a good idea to save a copy for your own records (button above). If the form won&rsquo;t send, please save a copy and email it to Nichola@NPOT.co.uk, or bring it to your first appointment.</div>
     </div>
   </div>
   </div>
@@ -342,6 +343,36 @@
     const b64 = (buf) => btoa(String.fromCharCode.apply(null, new Uint8Array(buf)));
     return { wk: b64(wk), iv: b64(iv), ct: b64(ct) };
   }
+  function _esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  function _captureForCopy(){
+    var answers={};
+    document.querySelectorAll('#content-digital .field-group').forEach(function(grp){
+      var lab=grp.querySelector('.field-label');
+      var key=lab?lab.textContent.replace(/\*/g,'').replace(/\s+/g,' ').trim():'';
+      var checks=grp.querySelectorAll('.check-item input[type=checkbox], .checklist-grid input[type=checkbox]');
+      if(checks.length){var picked=[];checks.forEach(function(c){if(c.checked){var cl=c.closest('label');picked.push(cl?cl.textContent.replace(/\s+/g,' ').trim():'Yes');}});if(!key)key='Selections';if(picked.length)answers[key]=picked.join(', ');return;}
+      var radios=grp.querySelectorAll('input[type=radio]');
+      if(radios.length){var chosen='';radios.forEach(function(r){if(r.checked){var ll=r.closest('label');chosen=ll?ll.textContent.replace(/\s+/g,' ').trim():(r.getAttribute('value')||'');}});if(!key)key=radios[0].name||'field';if(chosen)answers[key]=chosen;var extra=grp.querySelector('input:not([type=radio]):not([type=checkbox]), textarea, select');if(extra){var ev=(extra.value||'').trim();if(ev)answers[key+' — details']=ev;}return;}
+      var inp=grp.querySelector('input, textarea, select');if(!inp)return;if(!key)key=inp.id||inp.name||'field';var v=(inp.value||'').trim();if(v)answers[key]=v;
+    });
+    document.querySelectorAll('#content-digital .checkbox-item').forEach(function(item){var c=item.querySelector('input[type=checkbox]');var lab=item.querySelector('.checkbox-label');if(c&&lab){answers[lab.textContent.replace(/\*/g,'').replace(/\s+/g,' ').trim().slice(0,90)]=c.checked?'Yes':'No';}});
+    return answers;
+  }
+  function _saveCopy(answers,title){
+    var keys=Object.keys(answers).filter(function(k){return !/^_/.test(k)&&answers[k]!==''&&answers[k]!==false&&answers[k]!=null;});
+    if(!keys.length){alert('Please fill in the form first, then save your copy.');return;}
+    var rows=keys.map(function(k){var v=answers[k];if(v===true)v='Yes';return '<tr><th>'+_esc(k)+'</th><td>'+_esc(String(v))+'</td></tr>';}).join('');
+    var when=new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+    var html='<!doctype html><html><head><meta charset="utf-8"><title>'+_esc(title)+'</title>'+
+      '<style>body{font:14px/1.55 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;color:#2c3a33;max-width:720px;margin:22px auto;padding:0 18px}h1{font-size:19px;color:#2E5248;margin:0 0 2px}.meta{color:#5c6b62;font-size:13px;margin-bottom:16px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #e4e0d6;padding:8px 10px;text-align:left;vertical-align:top;font-size:13px}th{background:#eef2ee;width:40%;font-weight:600;color:#2E5248}.note{background:#eef2ee;border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:16px}@media print{.noprint{display:none}}</style>'+
+      '</head><body><h1>'+_esc(title)+'</h1><div class="meta">Nichola Philbey Occupational Therapy &middot; copy saved '+when+'</div>'+
+      '<div class="note noprint">This is your personal copy. Use <strong>Print &rarr; Save as PDF</strong> (or your phone&rsquo;s share &rarr; Save to Files) to keep it. <button class="noprint" onclick="window.print()" style="margin-left:8px;padding:7px 13px;border:none;background:#4A7C6F;color:#fff;border-radius:7px;cursor:pointer;font-weight:600">Save as PDF</button></div>'+
+      '<table>'+rows+'</table></body></html>';
+    var w=window.open('','_blank');
+    if(!w){var blob=new Blob([html],{type:'text/html'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=title.replace(/[^a-z0-9]+/gi,'_')+'.html';document.body.appendChild(a);a.click();a.remove();return;}
+    w.document.write(html);w.document.close();
+  }
+  function saveMyCopy(t){ _saveCopy(_captureForCopy(), t); }
   function handleSubmit() {
     var missing = 0;
     document.querySelectorAll("#content-digital [required]").forEach(function(el){ var empty=(el.type==="checkbox")?!el.checked:!el.value.trim(); if(empty){ el.style.outline="2px solid #D4821A"; missing++; } else { el.style.outline=""; } });
@@ -366,8 +397,8 @@
         var env = await _intakeEncrypt(krows[0].jwk, JSON.stringify(answers));
         var r = await fetch(SB_URL + "/rest/v1/intake_submissions", { method:"POST", headers:{ apikey: SB_KEY, "Content-Type":"application/json" }, body: JSON.stringify({ form_type:"questionnaire_adult", payload: env }) });
         if (!(r.ok || r.status===201)) throw new Error("status " + r.status);
-        alert("Thank you — the form has been securely sent to Nichola.");
-      } catch(e) { alert("Sorry, there was a problem sending the form. Please try again, or contact Nichola directly. (" + e.message + ")"); }
+        alert("Thank you — the form has been securely sent to Nichola.\n\nKeep a copy for your records using the Save a copy button below.");
+      } catch(e) { alert("Sorry, there was a problem sending the form. Please use the Save a copy button below and email your copy to Nichola@NPOT.co.uk, or try again. (" + e.message + ")"); }
     })();
   }
 </script>
