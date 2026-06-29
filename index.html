@@ -13953,7 +13953,18 @@ function AssessmentPhrasePicker({ fieldKey, fieldLabel, currentText, client, dat
     summaryNeeds:'s5', summaryLearningEnv:'s6', summaryStaffTraining:'s7',
     marieInstructions:'s1', marieAssessmentProcess:'s2', marieRecommendations:'s7',
   };
+  // ── Marie phrases (the EHCP bank) — surfaced inline on Marie assessments ──
+  const _isMarieAsmt = client.assessmentType === 'Marie Assessment';
+  const MARIE_BANK_LABELS = { instructions:'Instructions & Issues', assessmentProcess:'Assessment Process', recommendations:'Recommendations', learningEnv:'Learning Environment', staffTraining:'Staff Training', provision:'OT Provision', appendix:'Appendix — Equipment' };
+  const MARIE_FIELD_TO_BANK = { marieInstructions:'instructions', marieAssessmentProcess:'assessmentProcess', marieRecommendations:'recommendations', marieLearningEnv:'learningEnv', summaryLearningEnv:'learningEnv', summaryStaffTraining:'staffTraining', summaryNeeds:'recommendations', provisionNarrative:'provision', summaryAppendix:'appendix' };
+  // Map the field being edited to the matching Marie bank tab (auto-match); fall back sensibly.
+  const _marieFieldBank = _isMarieAsmt
+    ? (MARIE_FIELD_TO_BANK[fieldKey]
+        || ((fieldKey.startsWith('spm2_narrative_') || fieldKey === 'spNarrative' || fieldKey === 'vmiNarrative') ? 'assessmentProcess' : null)
+        || ((fieldKey.startsWith('outcome_') || fieldKey.startsWith('prov')) ? 'recommendations' : null))
+    : null;
   const defaultSub = (() => {
+    if (_marieFieldBank) return 'marie_' + _marieFieldBank;
     if (typeof FIELD_TO_SUBSECTION !== 'undefined' && FIELD_TO_SUBSECTION[fieldKey]) return FIELD_TO_SUBSECTION[fieldKey];
     if (fieldKey.startsWith('spm2_narrative_')) return 'spm2_' + fieldKey.replace('spm2_narrative_', '');
     if (fieldKey.startsWith('outcome_')) return 'rec_outcomes';
@@ -13961,7 +13972,8 @@ function AssessmentPhrasePicker({ fieldKey, fieldLabel, currentText, client, dat
     if (fieldKey.startsWith('adhoc_')) return 'adhoc';
     return null;
   })();
-  const defaultSection = defaultSub && typeof SUBSECTION_PARENT !== 'undefined' ? (SUBSECTION_PARENT[defaultSub] || 'all') :
+  const defaultSection = _marieFieldBank ? 'marie' :
+    (defaultSub && typeof SUBSECTION_PARENT !== 'undefined' ? (SUBSECTION_PARENT[defaultSub] || 'all') :
     (() => {
       if (fieldKey.startsWith('spm2_narrative_')) return 's3';
       if (fieldKey.startsWith('fm')) return 's3';
@@ -13969,7 +13981,7 @@ function AssessmentPhrasePicker({ fieldKey, fieldLabel, currentText, client, dat
       if (fieldKey.startsWith('outcome_')) return 's7';
       if (fieldKey.startsWith('prov')) return 's7';
       return FIELD_SECTION_HINTS[fieldKey] || 'all';
-    })();
+    })());
 
   const [filterSection, setFilterSection] = React.useState(defaultSection);
   const [filterSub,     setFilterSub]     = React.useState(defaultSub);
@@ -13993,7 +14005,7 @@ function AssessmentPhrasePicker({ fieldKey, fieldLabel, currentText, client, dat
     updateData(d => ({ ...d, settings: { ...(d.settings||{}), customPhrases: (d.settings?.customPhrases||[]).filter(p => p.id !== id) } }));
   };
 
-  const SECTION_LABELS = { all:'All', s1:'Referral', s2:'Background', s3:'Assessment', s4:'Observations', s5:'Interpretation', s6:'Functional Impact', s7:'Recommendations' };
+  const SECTION_LABELS = { all:'All', s1:'Referral', s2:'Background', s3:'Assessment', s4:'Observations', s5:'Interpretation', s6:'Functional Impact', s7:'Recommendations', ...(_isMarieAsmt ? { marie:'🔵 Marie' } : {}) };
   const GRP_META = [
     { key:'mabc',  label:'MABC-2',         strip:'MABC — ' },
     { key:'vmi',   label:'VMI',             strip:'VMI — ' },
@@ -14010,11 +14022,20 @@ function AssessmentPhrasePicker({ fieldKey, fieldLabel, currentText, client, dat
     { key:'marie', label:'Marie',           strip:null },
   ];
   const getGrp = k => { for (const g of GRP_META) { if (k.startsWith(g.key+'_') || k===g.key) return g; } return {key:'other',label:'Other',strip:null}; };
-  const allLibraryPhrases = Object.entries(PHRASE_BANK).flatMap(([key, phrases]) => phrases.map(p => ({ ...p, section: key })));
+  const _stdLibraryPhrases = Object.entries(PHRASE_BANK).flatMap(([key, phrases]) => phrases.map(p => ({ ...p, section: key })));
+  // On a Marie assessment, fold the Marie EHCP bank in under its own 'marie' section so it shows
+  // under the 🔵 Marie tab and per-tab sub-chips (sub = 'marie_<bankKey>').
+  const _marieLibraryPhrases = _isMarieAsmt
+    ? Object.entries(typeof MARIE_PHRASE_BANK !== 'undefined' ? MARIE_PHRASE_BANK : {}).flatMap(([k, arr]) =>
+        (arr || []).map(p => ({ label: p.label, text: p.text, tag: p.tag, section: 'marie', sub: 'marie_' + k, _marie: true })))
+    : [];
+  const allLibraryPhrases = [..._stdLibraryPhrases, ..._marieLibraryPhrases];
   const libraryFiltered = allLibraryPhrases.filter(p => {
     if (filterSub) { if (p.sub !== filterSub) return false; }
     else if (filterGroup) { if (getGrp(p.sub).key !== filterGroup) return false; }
+    else if (filterSection === 'marie') { if (!p._marie) return false; }
     else if (filterSection !== 'all') { if (p.section !== filterSection) return false; }
+    else if (p._marie) { return false; } // 'All' = standard phrases; Marie phrases live under the 🔵 Marie tab
     const q = search.trim().toLowerCase();
     return !q || applyTokens(p.text).toLowerCase().includes(q) || p.label.toLowerCase().includes(q);
   });
@@ -14119,6 +14140,22 @@ function AssessmentPhrasePicker({ fieldKey, fieldLabel, currentText, client, dat
                   <button key={k} onClick={() => { setFilterSection(k); setFilterSub(null); setFilterGroup(null); }} style={CHIP(filterSection===k)}>{lbl}</button>
                 ))}
               </div>
+              {/* Marie per-tab sub-chips (only on Marie assessments) */}
+              {filterSection === 'marie' && (
+                <div style={{ display:'flex', gap:5, flexWrap:'wrap', marginBottom:10 }}>
+                  {Object.entries(MARIE_BANK_LABELS).map(([k, lbl]) => {
+                    const sub = 'marie_' + k; const active = filterSub === sub;
+                    return (
+                      <button key={k} onClick={() => setFilterSub(active ? null : sub)}
+                        style={{ padding:'2px 9px', borderRadius:10, fontSize:10, fontWeight:600, cursor:'pointer',
+                          border:`1px solid ${active?T.sage:T.sandBorder}`,
+                          background:active?T.sage:T.card, color:active?'white':T.inkMid }}>
+                        {lbl}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
               {/* Subsection filter chips — two-level */}
               {filterSection !== 'all' && typeof SUBSECTION_PARENT !== 'undefined' && (() => {
                 const subs = Object.entries(SUBSECTION_PARENT).filter(([,v]) => v === filterSection);
@@ -14191,7 +14228,7 @@ function AssessmentPhrasePicker({ fieldKey, fieldLabel, currentText, client, dat
               <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
                 {libraryFiltered.map((p, i) => {
                   const resolved = applyTokens(p.text);
-                  const subLabel = p.sub && typeof SUBSECTION_LABELS !== 'undefined' ? SUBSECTION_LABELS[p.sub] : null;
+                  const subLabel = p._marie ? MARIE_BANK_LABELS[(p.sub||'').replace('marie_','')] : (p.sub && typeof SUBSECTION_LABELS !== 'undefined' ? SUBSECTION_LABELS[p.sub] : null);
                   return (
                     <div key={i} style={{ background:T.sagePale, border:`1px solid ${T.sandBorder}`, borderRadius:8, padding:'10px 14px', cursor:'pointer', transition:'border-color 0.15s' }}
                       onMouseEnter={e=>e.currentTarget.style.borderColor=T.sage}
